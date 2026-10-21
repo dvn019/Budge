@@ -992,6 +992,45 @@
     var amt = Math.max(500, Math.floor(under.left * 0.4 / 500) * 500);
     return { kind: 'save', id: under.id, amt: amt, btn: 'Move', text: L.cat(under.id).name + ' is ' + N(under.left) + ' under. Move ' + N(amt) + ' to savings?' };
   }
+  // ================= desktop =================
+  var QR = {"n": 29, "d": "M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM10 0h1v1h-1zM12 0h1v1h-1zM13 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM16 0h1v1h-1zM18 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM25 0h1v1h-1zM26 0h1v1h-1zM27 0h1v1h-1zM28 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM14 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM17 1h1v1h-1zM19 1h1v1h-1zM22 1h1v1h-1zM28 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM12 2h1v1h-1zM13 2h1v1h-1zM14 2h1v1h-1zM15 2h1v1h-1zM16 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM20 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM25 2h1v1h-1zM26 2h1v1h-1zM28 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM15 3h1v1h-1zM17 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM25 3h1v1h-1zM26 3h1v1h-1zM28 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM15 4h1v1h-1zM17 4h1v1h-1zM19 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM28 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM9 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM16 5h1v1h-1zM17 5h1v1h-1zM22 5h1v1h-1zM28 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM25 6h1v1h-1zM26 6h1v1h-1zM27 6h1v1h-1zM28 6h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM13 7h1v1h-1zM18 7h1v1h-1zM1 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM12 8h1v1h-1zM13 8h1v1h-1zM17 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM25 8h1v1h-1zM27 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM5 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM15 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM23 9h1v1h-1zM24 9h1v1h-1zM25 9h1v1h-1zM26 9h1v1h-1zM27 9h1v1h-1zM1 10h1v1h-1zM3 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM13 10h1v1h-1zM14 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM21 10h1v1h-1zM22 10h1v1h-1zM23 10h1v1h-1zM26 10h1v1h-1zM2 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM25 11h1v1h-1zM28 11h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM14 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM25 12h1v1h-1zM27 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM10 13h1v1h-1zM12 13h1v1h-1zM15 13h1v1h-1zM22 13h1v1h-1zM24 13h1v1h-1zM26 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM0 14h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM10 14h1v1h-1zM12 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM25 14h1v1h-1zM28 14h1v1h-1zM0 15h1v1h-1zM4 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM15 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM24 15h1v1h-1zM25 15h1v1h-1zM26 15h1v1h-1zM27 15h1v1h-1zM28 15h1v1h-1zM2 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM9 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM20 16h1v1h-1zM23 16h1v1h-1zM25 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM0 17h1v1h-1zM4 17h1v1h-1zM5 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM24 17h1v1h-1zM26 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM3 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM7 18h1v1h-1zM8 18h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM23 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM28 18h1v1h-1zM0 19h1v1h-1zM1 19h1v1h-1zM3 19h1v1h-1zM8 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM24 19h1v1h-1zM26 19h1v1h-1zM27 19h1v1h-1zM28 19h1v1h-1zM0 20h1v1h-1zM1 20h1v1h-1zM2 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM7 20h1v1h-1zM8 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM26 20h1v1h-1zM8 21h1v1h-1zM10 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM20 21h1v1h-1zM24 21h1v1h-1zM25 21h1v1h-1zM26 21h1v1h-1zM0 22h1v1h-1zM1 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM19 22h1v1h-1zM20 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM26 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM17 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM27 23h1v1h-1zM0 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM14 24h1v1h-1zM16 24h1v1h-1zM18 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM21 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1zM28 24h1v1h-1zM0 25h1v1h-1zM2 25h1v1h-1zM3 25h1v1h-1zM4 25h1v1h-1zM6 25h1v1h-1zM8 25h1v1h-1zM9 25h1v1h-1zM10 25h1v1h-1zM11 25h1v1h-1zM12 25h1v1h-1zM13 25h1v1h-1zM17 25h1v1h-1zM18 25h1v1h-1zM23 25h1v1h-1zM26 25h1v1h-1zM27 25h1v1h-1zM0 26h1v1h-1zM2 26h1v1h-1zM3 26h1v1h-1zM4 26h1v1h-1zM6 26h1v1h-1zM9 26h1v1h-1zM13 26h1v1h-1zM14 26h1v1h-1zM15 26h1v1h-1zM18 26h1v1h-1zM20 26h1v1h-1zM21 26h1v1h-1zM23 26h1v1h-1zM24 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h1v1h-1zM10 27h1v1h-1zM13 27h1v1h-1zM14 27h1v1h-1zM15 27h1v1h-1zM21 27h1v1h-1zM24 27h1v1h-1zM25 27h1v1h-1zM26 27h1v1h-1zM28 27h1v1h-1zM0 28h1v1h-1zM1 28h1v1h-1zM2 28h1v1h-1zM3 28h1v1h-1zM4 28h1v1h-1zM5 28h1v1h-1zM6 28h1v1h-1zM9 28h1v1h-1zM12 28h1v1h-1zM14 28h1v1h-1zM18 28h1v1h-1zM20 28h1v1h-1zM22 28h1v1h-1zM23 28h1v1h-1zM24 28h1v1h-1z"}, LIVE_URL = 'https://dvn019.github.io/budge/';
+  function useDesk() {
+    var mq = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1024px)') : null;
+    var s = useState(mq ? mq.matches : false);
+    useEffect(function () {
+      if (!mq) return;
+      function h() { s[1](mq.matches); }
+      if (mq.addEventListener) mq.addEventListener('change', h); else mq.addListener(h);
+      return function () { if (mq.removeEventListener) mq.removeEventListener('change', h); else mq.removeListener(h); };
+    }, []);
+    return s[0];
+  }
+  function SideNav(p) {
+    var t = p.tab, A = p.A, st = p.st, now = p.now, n = L.streak(st, now);
+    var items = [['home', 'house', 'Home'], ['history', 'list', 'History'], ['insights', 'bulb', 'Insights'], ['settings', 'gear', 'Settings']];
+    return html`<aside class="side" aria-label="Budge">
+      <div class="side-brand"><${Logo} size=${32} /><span>Budge</span></div>
+      ${p.live && html`<button class="btn btn-primary side-add" onClick=${function () { A.add(); }}><${Icon} n="plus" size=${20} />Log a purchase<kbd>N</kbd></button>`}
+      <nav class="side-nav">${items.map(function (x) {
+        var on = t === x[0];
+        return html`<button class=${cx('side-item', on && 'on')} aria-current=${on ? 'page' : null} onClick=${function () { A.tab(x[0]); }}>
+          <${Icon} n=${x[1] + (on && ICONS.ui[x[1] + '-f'] ? '-f' : '')} size=${22} /><span>${x[2]}</span>${x[0] === 'insights' && p.unseen && !on ? html`<span class="dot"></span>` : null}</button>`;
+      })}</nav>
+      <div class="side-foot">
+        <div class="t-cap muted">Your data stays on this device.</div>
+      </div>
+    </aside>`;
+  }
+  function QrCard() {
+    var k = 'budge-qr-off', s = useState(function () { try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } }), off = s[0];
+    if (off) return null;
+    return html`<div class="qr-card" role="complementary" aria-label="Open on your phone">
+      <svg class="qr" viewBox=${'-2 -2 ' + (QR.n + 4) + ' ' + (QR.n + 4)} shape-rendering="crispEdges" aria-label=${'QR code for ' + LIVE_URL} role="img"><rect x="-2" y="-2" width=${QR.n + 4} height=${QR.n + 4} fill="#fff" /><path d=${QR.d} fill="#0B0F0D" /></svg>
+      <div class="qr-text"><div class="t-label">Best on your phone</div>
+        <div class="t-s muted">Scan to open Budge, then add it to your home screen.</div></div>
+      <button class="icon-btn qr-x" aria-label="Hide" onClick=${function () { try { localStorage.setItem(k, '1'); } catch (e) { } s[1](true); }}><${Icon} n="x" size=${16} color="var(--muted)" /></button>
+    </div>`;
+  }
   function BudgetHome(p) {
     var st = p.st, b = p.b, A = p.A, s = L.status(st, b, p.now), u = unitWord(s.unit);
     var last = b.history[b.history.length - 1];
@@ -1014,6 +1053,7 @@
           ${L.streak(st, p.now) > 0 && html`<span class="pill pill-streak"><${Icon} n="fire" size=${15} color="var(--warning)" />${L.streak(st, p.now)}-day streak</span>`}
         </div>
       </div>
+      <div class="home-grid"><div class="home-a">
       ${showReview && html`<div class=${cx('banner', last.over > 0 ? 'bad' : 'good')}>
         <span class="b-ic"><${Icon} n=${last.over > 0 ? 'warn' : 'piggy'} size=${20} color=${last.over > 0 ? 'var(--critical)' : 'var(--emerald-deep)'} /></span>
         <div class="b-text">
@@ -1031,6 +1071,7 @@
         <button class="nudge-btn" onClick=${act}>${nudge.btn}</button>
         <button class="nudge-x" aria-label="Hide for today" onClick=${function () { A.commitB(b.id, function (x) { x.nudgeOff = s.today; }); }}><${Icon} n="x" size=${14} /></button>
       </div>`}
+      </div>
       <div class="pots-card">
         <div class="pots-head"><div class="t-title">Pots</div><button class="pots-edit" onClick=${function () { A.open({ type: 'split' }); }}>Edit</button></div>
         ${s.pots.map(function (pt) { return html`<${PotRow} key=${pt.id} pot=${pt} onClick=${function () { A.open({ type: 'cat', id: pt.id, unit: s.unit, offset: 0 }); }} />`; })}
@@ -1039,7 +1080,7 @@
           <div class="grow"><div class="name">Work costs</div><div class="meta">Not in your budget</div></div>
           <div class="amt num">${N(s.work)}</div></button>`}
       </div>
-      ${s.phase === 'live' && html`<div>
+      ${s.phase === 'live' && html`<div class="home-today">
         <div class="sec-head"><div class="t-title">Today</div>
           <button class="link" onClick=${function () { A.tab('history'); }}>History</button>
         </div>
@@ -1050,6 +1091,7 @@
         </${Empty}></div>`}
       </div>`}
       ${s.phase === 'upcoming' && html`<${Empty} icon="calendar" title=${'Starts ' + L.shortDate(b.start)} text="You can log purchases once it starts." />`}
+      </div>
     </div>`;
   }
   function History(p) {
@@ -1896,6 +1938,7 @@
     L.setCustom(st.customCats, st.catNames);
     SFX.enabled = st.sound !== false;
     var budget = L.mainBudget(st);
+    var desk = useDesk();
 
     function commit(fn) { var s = clone(ref.current); fn(s); s.updatedAt = Date.now(); ref.current = s; setSt(s); Persist.schedule(s); }
     function replace(s) { s.updatedAt = Date.now(); ref.current = s; setSt(s); Persist.schedule(s); }
@@ -1940,6 +1983,17 @@
       var t = setTimeout(function () { Push.sync(ref.current); }, 1500);
       return function () { clearTimeout(t); };
     }, [pushKey, ready]);
+    // Keyboard (desktop): N logs a purchase, Esc closes what's open.
+    useEffect(function () {
+      function k(e) {
+        var tag = (e.target && e.target.tagName) || '';
+        if (e.key === 'Escape' && layer) { e.preventDefault(); A.close(); return; }
+        if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.metaKey || e.ctrlKey || e.altKey) return;
+        if ((e.key === 'n' || e.key === 'N') && !layer && budget && L.phaseOf(budget, L.dkey(now)) === 'live') { e.preventDefault(); A.add(); }
+      }
+      window.addEventListener('keydown', k);
+      return function () { window.removeEventListener('keydown', k); };
+    });
     var sUpd = useState(false), upd = sUpd[0], setUpd = sUpd[1];
     useEffect(function () { function h() { setUpd(true); } window.addEventListener('budge-update', h); return function () { window.removeEventListener('budge-update', h); }; }, []);
     useEffect(function () { if (L.anyRollover(st, now)) { var gained = 0; commit(function (x) { L.rolloverAll(x, now).forEach(function (h) { gained += h.saved || 0; }); }); if (gained > 0) SFX.play('chime'); } });
@@ -2030,12 +2084,13 @@
         else if (lb && layer.type === 'cover') lay = html`<${CoverLayer} key=${layer.id} st=${st} b=${lb} now=${now} A=${A} id=${layer.id} />`;
         else if (lb && layer.type === 'split') lay = html`<${SplitLayer} st=${st} b=${lb} A=${A} />`;
       }
-      body = html`<main class=${cx('screen', !budget && 'screen-onboard')} key=${budget ? nav.tab : 'onboard'}>${screen}</main>
-        ${tabbar}
-        ${lay}`;
+      var side = desk && budget ? html`<${SideNav} tab=${nav.tab} A=${A} st=${st} now=${now} live=${live} unseen=${unseen} />` : null;
+      body = html`${side}<main class=${cx('screen', !budget && 'screen-onboard', 'tab-' + (budget ? nav.tab : 'onboard'))} key=${budget ? nav.tab : 'onboard'}>${screen}</main>
+        ${desk ? null : tabbar}
+        ${lay && (desk ? html`<div class="modal-wrap"><div class="scrim" onClick=${A.close}></div>${lay}</div>` : lay)}`;
     }
     var streakN = L.streak(st, now);
-    return html`<div class="stage">
+    return html`<div class=${cx('stage', desk && 'desk')}>
       <div class="app">
         ${body}
         ${notif && st.budgets.length > 0 && html`<button class="notif" onClick=${function () { A.add(); }}>
@@ -2046,7 +2101,8 @@
         ${toast && html`<div class="toast" key=${toast.k} role="status">${toast.m}</div>`}
         ${upd && html`<button class="toast toast-btn" onClick=${function () { location.reload(); }}>New version ready · <b>Refresh</b></button>`}
       </div>
-      ${!PWA && html`<${Guide} st=${st} now=${now} A=${A} mode=${mode} />`}
+      ${!PWA && !desk && html`<${Guide} st=${st} now=${now} A=${A} mode=${mode} />`}
+      ${desk && html`<${QrCard} />`}
     </div>`;
   }
 

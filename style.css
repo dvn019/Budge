@@ -468,3 +468,57 @@ button.sum-cell:hover .t-cap { color: var(--ink); text-decoration: underline; }
 .install-tip .icon-btn { width: 32px; height: 32px; margin: -4px -4px 0 0; }
 .toast-btn { pointer-events: auto; cursor: pointer; }
 .feedback-frame { flex: 1; width: 100%; border: 0; min-height: 0; }
+
+/* ---------- v9: home grid (stacks on phones) ---------- */
+.home-grid, .home-a { display: flex; flex-direction: column; gap: 20px; }
+
+/* ---------- v9: desktop layout (1024px and wider) ---------- */
+.stage.desk { padding: 0; gap: 0; display: block; }
+.desk .app { max-width: none; max-height: none; height: 100%; border-radius: 0; box-shadow: none; flex-direction: row; background: #F6F7F6; }
+.desk .screen { background: #F6F7F6; }
+.desk .tabpad { padding-top: 40px; padding-bottom: 64px; max-width: 760px; margin: 0 auto; width: 100%; padding-left: 40px; padding-right: 40px; box-sizing: border-box; }
+.desk .tab-home .tabpad { max-width: 1120px; }
+.desk .home-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-areas: "a p" "t p"; gap: 24px; align-items: start; }
+.desk .home-a { grid-area: a; }
+.desk .home-grid > .pots-card { grid-area: p; background: var(--surface); }
+.desk .home-today { grid-area: t; }
+.desk .home-top .h2 { font-size: 28px; }
+.desk .screen:not(.tab-home) { background: var(--surface); }
+.desk .tab-home .pots-card, .desk .tab-home .card, .desk .tab-home .empty { background: var(--surface); }
+.desk .home-today .list { background: var(--surface); border-radius: 16px; padding: 4px 16px; border: 1px solid #EEEEEE; }
+.desk .tabpad { padding-bottom: 180px; }
+.desk .tank { height: 340px !important; }
+.desk .toast { bottom: 32px; left: calc(50% + 130px); }
+
+.side { width: 260px; flex: none; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; padding: 28px 20px 24px; box-sizing: border-box; }
+.side-brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; padding: 0 8px; }
+.side-add { height: 48px; font-size: 15px; gap: 8px; }
+.side-add kbd { font: 600 11px/1 Inter, system-ui, sans-serif; background: rgba(255,255,255,.22); border-radius: 6px; padding: 4px 6px; margin-left: 4px; }
+.side-nav { display: flex; flex-direction: column; gap: 4px; }
+.side-item { position: relative; display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 14px; border-radius: 14px; font-size: 16px; font-weight: 600; color: var(--ink-2); text-align: left; }
+.side-item:hover { background: #F4F5F4; }
+.side-item.on { background: #ECEEED; color: var(--ink); }
+.side-item .dot { position: static; margin-left: auto; }
+.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 0 8px; }
+
+.modal-wrap { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 32px; }
+.scrim { position: absolute; inset: 0; background: rgba(11, 15, 13, .32); animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.desk .layer { position: relative; inset: auto; width: 440px; max-width: 100%; height: min(820px, 100%); border-radius: 28px; overflow: hidden; box-shadow: 0 30px 80px rgba(11, 15, 13, .25); animation-name: slideUp; }
+
+.qr-card { position: fixed; right: 24px; bottom: 24px; z-index: 50; width: 280px; display: flex; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px 14px 14px 14px; box-shadow: 0 16px 40px rgba(11, 15, 13, .12); }
+.qr { width: 84px; height: 84px; flex: none; border-radius: 8px; }
+.qr-text { flex: 1; min-width: 0; padding-right: 18px; display: flex; flex-direction: column; gap: 4px; }
+.qr-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; }
+
+/* First-run screen on desktop: copy on the left, the tank on the right */
+.desk .screen-onboard { background: var(--surface); }
+.desk .onboard { max-width: 1040px; margin: 0 auto; width: 100%; box-sizing: border-box; padding: 48px 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto auto 1fr; grid-template-areas: "brand hero" "." "hero" "copy hero" "actions hero" "." ; column-gap: 72px; row-gap: 24px; align-items: center; }
+.desk .onboard { grid-template-areas: "brand hero" "sp1 hero" "copy hero" "actions hero" "sp2 hero"; }
+.desk .onboard-brand { grid-area: brand; align-self: start; }
+.desk .onboard-hero { grid-area: hero; align-self: center; }
+.desk .onboard-copy { grid-area: copy; }
+.desk .onboard-actions { grid-area: actions; max-width: 360px; }
+.desk .onboard-title { font-size: 44px; }
+.desk .onboard-copy p { font-size: 18px; max-width: 420px; }
+.desk .onboard-hero .tank { height: 420px !important; }
