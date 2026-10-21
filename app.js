@@ -2046,7 +2046,7 @@
         ${toast && html`<div class="toast" key=${toast.k} role="status">${toast.m}</div>`}
         ${upd && html`<button class="toast toast-btn" onClick=${function () { location.reload(); }}>New version ready · <b>Refresh</b></button>`}
       </div>
-      <${Guide} st=${st} now=${now} A=${A} mode=${mode} />
+      ${!PWA && html`<${Guide} st=${st} now=${now} A=${A} mode=${mode} />`}
     </div>`;
   }
 
