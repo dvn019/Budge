@@ -608,3 +608,12 @@ body { font-weight: 400; font-optical-sizing: auto; -webkit-font-smoothing: anti
 .swipe-hint { display: flex; align-items: center; gap: 6px; margin-bottom: -8px; }
 .toast-undo { display: flex; align-items: center; gap: 14px; white-space: normal; text-align: left; pointer-events: auto; max-width: calc(100% - 32px); }
 .toast-act { color: #4ADE80; font-weight: 600; font-size: 14px; flex: none; }
+
+/* ---------- v12: what's new ---------- */
+.wn { padding: 16px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.wn:last-child { border-bottom: 0; }
+.wn-head { display: flex; align-items: center; gap: 10px; }
+.wn-ver { font-size: 13px; font-weight: 600; color: var(--ink-2); background: var(--key); border-radius: 8px; padding: 3px 8px; font-variant-numeric: tabular-nums; }
+.wn-notes { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
+.dot-inline { position: static; width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); flex: none; margin-right: 4px; }
+.side-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); }

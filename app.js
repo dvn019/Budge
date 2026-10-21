@@ -619,6 +619,10 @@
     sync: function (st) { if (Push.on() && Push.joined()) Push.post('/update', Object.assign({ id: Push.id() }, Push.info(st))).catch(function () { }); },
     test: function () { return Push.post('/test', { id: Push.id() }); }
   };
+  // What's new: the changelog ships with the app; a dot shows until the newest notes are opened.
+  var LOG = window.BUDGE_CHANGELOG || [], LATEST = LOG[0] ? LOG[0].version : '';
+  function seenVersion() { try { return localStorage.getItem('budge-seen-version'); } catch (e) { return LATEST; } }
+  function markSeen() { try { localStorage.setItem('budge-seen-version', LATEST); } catch (e) { } }
   function stat(name, ev) {
     if (!PWA) return;
     try { var gc = window.goatcounter; if (gc && gc.count) gc.count({ path: ev ? name : '/' + name, title: ev ? name : 'Budge · ' + name, event: !!ev }); } catch (e) { }
@@ -894,6 +898,22 @@
       </div>
     </div>`;
   }
+  function WhatsNew(p) {
+    var A = p.A;
+    useEffect(function () { markSeen(); if (p.onSeen) p.onSeen(); }, []);
+    return html`<div class="layer">
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">What’s new</div></div>
+      <div class="lb pad">
+        ${LOG.map(function (r, i) {
+          return html`<div class=${cx('wn', i === 0 && 'wn-latest')} key=${r.version}>
+            <div class="wn-head"><span class="wn-ver">${r.version}</span><span class="t-label">${r.title}</span>${i === 0 && html`<span class="tag tag-good">Latest</span>`}</div>
+            <div class="t-cap muted">${r.date}</div>
+            <ul class="wn-notes">${r.notes.map(function (n) { return html`<li>${n}</li>`; })}</ul>
+          </div>`;
+        })}
+      </div>
+    </div>`;
+  }
   function FeedbackLayer(p) {
     var A = p.A, st = p.st, on = typeof navigator.onLine === 'boolean' ? navigator.onLine : true;
     var q = 'hideTitle=1&transparentBackground=1&alignLeft=1&platform=' + encodeURIComponent(isIOS() ? 'ios' : /android/i.test(navigator.userAgent) ? 'android' : 'other')
@@ -983,7 +1003,7 @@
       <nav class="side-nav">${items.map(function (x) {
         var on = t === x[0];
         return html`<button class=${cx('side-item', on && 'on')} aria-current=${on ? 'page' : null} onClick=${function () { A.tab(x[0]); }}>
-          <${Icon} n=${x[1] + (on && ICONS.ui[x[1] + '-f'] ? '-f' : '')} size=${22} /><span>${x[2]}</span>${x[0] === 'insights' && p.unseen && !on ? html`<span class="dot"></span>` : null}</button>`;
+          <${Icon} n=${x[1] + (on && ICONS.ui[x[1] + '-f'] ? '-f' : '')} size=${22} /><span>${x[2]}</span>${(x[0] === 'insights' && p.unseen && !on) || (x[0] === 'settings' && p.newUnseen && !on) ? html`<span class="dot"></span>` : null}</button>`;
       })}</nav>
       <div class="side-foot">
         <div class="t-cap muted">Your data stays on this device.</div>
@@ -1390,6 +1410,10 @@
         <button class="row" onClick=${A.nextWeek}><div class="grow"><div class="name">Jump to next week</div><div class="meta">What’s left is added to your total left over</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
         <${Confirm} label="Load the sample week" question="This replaces your data with a sample week." yes="Load sample" onYes=${A.loadSample} />
         <${Confirm} label="Start over" danger=${true} meta="Delete your budget and every record" question="Delete everything and start again?" yes="Delete all" onYes=${A.startOver} />
+      </div></div>`}
+      ${LOG.length > 0 && html`<div><div class="group-title">About</div><div class="group">
+        <button class="row" onClick=${function () { A.open({ type: 'whatsnew' }); }}><div class="grow"><div class="name">What’s new</div><div class="meta">Version ${LATEST} · ${LOG[0].title}</div></div>
+          ${p.unseen && html`<span class="dot dot-inline" aria-label="New"></span>`}<${Icon} n="right" size=${16} color="var(--faint)" /></button>
       </div></div>`}
       <div class="t-cap muted" style=${{ textAlign: 'center' }}>${PWA ? 'Budge ' + (CFG.release || '') + (CFG.released ? ' · Updated ' + CFG.released : '') : 'Budge prototype ' + (window.BUDGE_RELEASE || '') + ' · ' + (p.mode === 'db' ? 'Saved to your account' : 'Saved on this device')}<br />${PWA ? 'Your data stays on this phone' : ''}</div>
     </div>`;
@@ -1940,6 +1964,7 @@
     SFX.enabled = st.sound !== false;
     var budget = L.mainBudget(st);
     var desk = useDesk();
+    var sNew = useState(function () { var v = seenVersion(); if (v === null && !boot.current.had) { markSeen(); return false; } return !!LATEST && v !== LATEST; }), newUnseen = sNew[0], setNewUnseen = sNew[1];
 
     function commit(fn) { var s = clone(ref.current); fn(s); s.updatedAt = Date.now(); ref.current = s; setSt(s); Persist.schedule(s); }
     function replace(s) { s.updatedAt = Date.now(); ref.current = s; setSt(s); Persist.schedule(s); }
@@ -2066,7 +2091,7 @@
         screen = t === 'home' ? html`<${BudgetHome} st=${st} b=${budget} now=${now} A=${A} />`
           : t === 'history' ? html`<${History} st=${st} b=${budget} now=${now} A=${A} view=${view} setView=${setView} />`
           : t === 'insights' ? html`<${Insights} st=${st} b=${budget} now=${now} A=${A} idx=${rIdx} setIdx=${setIdx} />`
-          : html`<${BudgetSettings} key=${budget.id} st=${st} b=${budget} now=${now} A=${A} mode=${mode} />`;
+          : html`<${BudgetSettings} key=${budget.id} st=${st} b=${budget} now=${now} A=${A} mode=${mode} unseen=${newUnseen} />`;
         var live = L.phaseOf(budget, L.dkey(now)) === 'live', unseen = reviewUnseen(budget);
         var tabs = [['home', 'house', 'Home'], ['history', 'list', 'History'], ['insights', 'bulb', 'Insights'], ['settings', 'gear', 'Settings'], ['add']];
         tabbar = html`<nav class="tabbar" aria-label=${budget.name}>
@@ -2074,7 +2099,7 @@
             if (x[0] === 'add') return live ? html`<button class="tab-add" aria-label="Add spending" onClick=${function () { A.add(); }}><${Icon} n="plus" size=${22} /></button>` : null;
             var on = t === x[0];
             return html`<button class=${cx('tab', on && 'on')} aria-label=${x[2]} aria-current=${on ? 'page' : null} onClick=${function () { A.tab(x[0]); }}>
-              <${Icon} n=${x[1] + (on && ICONS.ui[x[1] + '-f'] ? '-f' : '')} size=${22} />${x[0] === 'insights' && unseen && !on ? html`<span class="dot"></span>` : null}</button>`;
+              <${Icon} n=${x[1] + (on && ICONS.ui[x[1] + '-f'] ? '-f' : '')} size=${22} />${(x[0] === 'insights' && unseen && !on) || (x[0] === 'settings' && newUnseen && !on) ? html`<span class="dot"></span>` : null}</button>`;
           })}
         </nav>`;
       }
@@ -2083,6 +2108,7 @@
         var lb = layer.bid ? L.findBudget(st, layer.bid) : budget;
         if (layer.type === 'add') lay = html`<${AddFlow} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
         else if (layer.type === 'create') lay = html`<${CreateBudget} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
+        else if (layer.type === 'whatsnew') lay = html`<${WhatsNew} A=${A} onSeen=${function () { setNewUnseen(false); }} />`;
         else if (layer.type === 'feedback') lay = html`<${FeedbackLayer} st=${st} A=${A} />`;
         else if (layer.type === 'edit') lay = html`<${EditEntry} key=${layer.id} st=${st} now=${now} A=${A} id=${layer.id} />`;
         else if (lb && layer.type === 'cat') lay = html`<${CategoryDetail} key=${layer.id} st=${st} b=${lb} now=${now} A=${A} id=${layer.id} unit=${layer.unit} offset=${layer.offset} />`;
@@ -2090,7 +2116,7 @@
         else if (lb && layer.type === 'cover') lay = html`<${CoverLayer} key=${layer.id} st=${st} b=${lb} now=${now} A=${A} id=${layer.id} />`;
         else if (lb && layer.type === 'split') lay = html`<${SplitLayer} st=${st} b=${lb} A=${A} />`;
       }
-      var side = desk && budget ? html`<${SideNav} tab=${nav.tab} A=${A} st=${st} now=${now} live=${live} unseen=${unseen} />` : null;
+      var side = desk && budget ? html`<${SideNav} tab=${nav.tab} A=${A} st=${st} now=${now} live=${live} unseen=${unseen} newUnseen=${newUnseen} />` : null;
       body = html`${side}<main class=${cx('screen', !budget && 'screen-onboard', 'tab-' + (budget ? nav.tab : 'onboard'))} key=${budget ? nav.tab : 'onboard'}>${screen}</main>
         ${desk ? null : tabbar}
         ${lay && (desk ? html`<div class="modal-wrap"><div class="scrim" onClick=${A.close}></div>${lay}</div>` : lay)}`;
