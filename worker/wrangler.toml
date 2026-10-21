@@ -14,4 +14,5 @@ database_id = "847c981b-99df-4572-8ca5-e139556c8915"
 
 [vars]
 ALLOWED_ORIGIN = "https://dvn019.github.io"
+SITE_URL = "https://dvn019.github.io/budge/"
 CONTACT = "mailto:danieladedoyinjunior@gmail.com"

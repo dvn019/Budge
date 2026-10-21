@@ -1,6 +1,6 @@
 // Budge service worker: works offline, shows notifications.
-const CACHE = 'budge-81b7c953';
-const ASSETS = ["./", "index.html", "style.css?v=81b7c953", "app.js?v=81b7c953", "vendor/preact-htm.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/badge-96.png", "icons/favicon.svg", "fonts/inter-latin-wght-normal.woff2", "fonts/inter-latin-ext-wght-normal.woff2"];
+const CACHE = 'budge-19e7d50e';
+const ASSETS = ["./", "index.html", "style.css?v=19e7d50e", "app.js?v=19e7d50e", "vendor/preact-htm.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/badge-96.png", "icons/favicon.svg", "fonts/inter-latin-wght-normal.woff2", "fonts/inter-latin-ext-wght-normal.woff2"];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
@@ -31,9 +31,9 @@ self.addEventListener('push', e => {
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data && e.data.text() }; }
   e.waitUntil(Promise.all([
     self.registration.showNotification(d.title || 'Anything to log today?', {
-      body: d.body || 'Tap to add what you spent.', icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', tag: 'daily', data: { url: d.url || './?add=1' }
+      body: d.body || 'Tap to add what you spent.', icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', tag: d.tag || 'daily', data: { url: d.url || './?add=1' }
     }),
-    self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null
+    (d.tag || 'daily') === 'daily' && self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null
   ]));
 });
 self.addEventListener('notificationclick', e => {

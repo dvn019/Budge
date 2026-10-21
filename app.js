@@ -601,7 +601,7 @@
     info: function (st) {
       var days = Object.keys(st.entries.reduce(function (a, e) { a[L.entryDay(e)] = 1; return a; }, {})).concat(st.checkins || []).sort();
       var tz = 'Africa/Lagos'; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch (e) { }
-      return { time: st.reminder.time, on: !!st.reminder.on, tz: tz, lastLogged: days[days.length - 1] || null, streak: L.streak(st, Date.now()) };
+      return { time: st.reminder.time, on: !!st.reminder.on, news: st.news !== false, tz: tz, lastLogged: days[days.length - 1] || null, streak: L.streak(st, Date.now()) };
     },
     post: function (path, body) {
       return fetch(CFG.push.replace(/\/$/, '') + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -623,6 +623,19 @@
   var LOG = window.BUDGE_CHANGELOG || [], LATEST = LOG[0] ? LOG[0].version : '';
   function seenVersion() { try { return localStorage.getItem('budge-seen-version'); } catch (e) { return LATEST; } }
   function markSeen() { try { localStorage.setItem('budge-seen-version', LATEST); } catch (e) { } }
+  // Can this device show notifications right now (or after one tap on "Allow")?
+  function notifyState() {
+    if (!PWA || typeof Notification === 'undefined' || !('serviceWorker' in navigator)) return 'none';
+    if (isIOS() && !isStandalone()) return 'install';
+    return Notification.permission; // 'default' | 'granted' | 'denied'
+  }
+  function askNotify(A) {
+    return Notification.requestPermission().then(function (r) {
+      stat('notifications-' + r, true);
+      if (r === 'granted') A.say('Reminders are on'); else if (r === 'denied') A.say('Notifications are off. You can change this in your phone’s settings');
+      return r;
+    }, function () { return 'default'; });
+  }
   function stat(name, ev) {
     if (!PWA) return;
     try { var gc = window.goatcounter; if (gc && gc.count) gc.count({ path: ev ? name : '/' + name, title: ev ? name : 'Budge · ' + name, event: !!ev }); } catch (e) { }
@@ -1053,6 +1066,7 @@
         <button class="icon-btn" aria-label="Dismiss" style=${{ width: '32px', height: '32px' }} onClick=${function () { A.commitB(b.id, function (x) { x.bannerSeen = last.start; }); }}><${Icon} n="x" size=${16} /></button>
       </div>`}
       ${!showReview && html`<${InstallTip} st=${st} A=${A} />`}
+      ${!showReview && html`<${NotifyCard} st=${st} A=${A} />`}
       <${TankCard} s=${s} b=${b} next=${next} />
       ${nudge && html`<div class="nudge">
         <${Icon} n="sparkle" size=${20} color="#4ADE80" />
@@ -1336,7 +1350,9 @@
       <div><div class="group-title">Notifications</div><div class="group">
         ${!canNotify || (ios && !standalone) ? html`<div class="row"><div class="grow"><div class="name">Notifications</div>
             <div class="meta">${ios ? 'Add Budge to your home screen first: tap Share, then Add to Home Screen.' : 'This browser can’t show notifications.'}</div></div></div>`
-        : perm.v === 'granted' ? html`<button class="row" onClick=${test}><div class="grow"><div class="name">Send a test notification</div><div class="meta">${Push.on() ? 'Sent from the reminder server, like the real one' : 'See how the daily reminder looks'}</div></div><${Icon} n="bell" size=${18} color="var(--muted)" /></button>`
+        : perm.v === 'granted' ? html`<div class="row"><div class="grow"><div class="name">Update news</div><div class="meta">A notification when Budge gets better</div></div>
+            <${Toggle} label="Update news" on=${st.news !== false} onChange=${function (v) { A.commit(function (x) { x.news = v; }); }} /></div>
+          <button class="row" onClick=${test}><div class="grow"><div class="name">Send a test notification</div><div class="meta">${Push.on() ? 'Sent from the reminder server, like the real one' : 'See how the daily reminder looks'}</div></div><${Icon} n="bell" size=${18} color="var(--muted)" /></button>`
         : perm.v === 'denied' ? html`<div class="row"><div class="grow"><div class="name">Notifications are blocked</div><div class="meta">Turn them on for Budge in your phone’s settings.</div></div></div>`
         : html`<button class="row" onClick=${allow}><div class="grow"><div class="name">Allow notifications</div><div class="meta">For the daily reminder</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>`}
       </div></div>
@@ -1357,6 +1373,18 @@
   }
   function isStandalone() { try { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } }
   function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function NotifyCard(p) {
+    var st = p.st, A = p.A, ns = notifyState();
+    if (st.notifCardOff || ns !== 'default' || (!isStandalone() && window.__installEvt)) return null;
+    function close() { A.commit(function (x) { x.notifCardOff = true; }); }
+    return html`<div class="card install-tip">
+      <span class="b-ic" style=${{ background: 'var(--emerald-soft)', flex: 'none' }}><${Icon} n="bell" size=${20} color="var(--emerald-deep)" /></span>
+      <div style=${{ flex: 1, minWidth: 0 }}><div class="t-label">Get a reminder each evening</div>
+        <div class="t-s muted">Only on days you haven’t logged anything.</div>
+        <button class="btn btn-primary btn-sm" style=${{ width: 'auto', marginTop: '10px', paddingInline: '18px' }} onClick=${function () { askNotify(A).then(function () { A.commit(function (x) { x.notifCardOff = true; x.reminder = Object.assign({}, x.reminder, { on: true }); }); }); }}>Turn on</button></div>
+      <button class="icon-btn" aria-label="Close" onClick=${close}><${Icon} n="x" size=${18} color="var(--muted)" /></button>
+    </div>`;
+  }
   function InstallTip(p) {
     var st = p.st, A = p.A;
     var ev = useState(window.__installEvt || null), evt = ev[0], setEvt = ev[1];
@@ -1553,9 +1581,9 @@
     useKeys(onKey, function () { if (n >= 1000) toSplit(); }, cur === 'amount');
     function next() { setStep(step + 1); }
     function toSplit() { if (!cats || seededFrom !== n) { setCats(L.autoSplit(n)); setSeeded(n); } next(); }
-    function finish() {
-      var b = L.newBudget({ name: 'My budget', kind: 'repeat', rhythm: kind, cats: cats }, now);
-      A.commit(function (x) { x.budgets = [b]; x.mainBid = b.id; x.lastBid = b.id; x.reminder = reminder; x.reminderAsked = true; x.sample = false; });
+    function finish(rem) {
+      var b = L.newBudget({ name: 'My budget', kind: 'repeat', rhythm: kind, cats: cats }, now), r = rem && rem.time ? rem : reminder;
+      A.commit(function (x) { x.budgets = [b]; x.mainBid = b.id; x.lastBid = b.id; x.reminder = r; x.reminderAsked = true; x.sample = false; x.notifCardOff = true; });
       A.sfx('chime'); A.say('Your budget is ready'); stat('budget-created-' + kind, true); A.home();
     }
     var cta = html`<button class="btn btn-primary" disabled=${!cats || L.totalBudget(cats) < 1000} onClick=${finish}>Start budgeting</button>`;
@@ -1592,6 +1620,21 @@
       body = html`<div class="lb pad"><div><h1 class="h1">Split it into allocations</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>An allocation is what you can spend on one thing each ${u}. We’ve made a start. Change any amount.</p></div>
         <${SplitEditor} cats=${cats} unit=${kind} onChange=${setCats} st=${st} A=${A} /></div>`;
       foot = isLast ? cta : html`<button class="btn btn-primary" disabled=${L.totalBudget(cats) < 1000} onClick=${next}>Continue</button>`;
+    } else if (notifyState() === 'default' || notifyState() === 'install') {
+      var ios = notifyState() === 'install';
+      body = html`<div class="lb pad">
+        <span class="b-ic" style=${{ width: '56px', height: '56px', background: 'var(--emerald-soft)' }}><${Icon} n="bell" size=${26} color="var(--emerald-deep)" /></span>
+        <div><h1 class="h1">Get a reminder each evening?</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>A quick nudge on days you haven’t logged anything. It’s how people stick with a budget.</p></div>
+        ${ios ? html`<div class="card ios-steps">
+            <div class="t-label">First, add Budge to your home screen</div>
+            <ol><li>Tap <b>Share</b> at the bottom of Safari</li><li>Tap <b>Add to Home Screen</b></li><li>Open Budge from the new icon and turn on reminders in Settings</li></ol>
+          </div>`
+          : html`<div class="group"><label class="row" for="setup-time"><div class="grow name">Remind me at</div>
+            <input id="setup-time" type="time" class="time-in" style=${{ background: 'var(--surface)' }} value=${reminder.time} onChange=${function (e) { if (e.target.value) setReminder({ on: true, time: e.target.value }); }} /></label></div>`}
+      </div>`;
+      foot = ios ? html`<button class="btn btn-primary" onClick=${function () { finish({ on: true, time: reminder.time }); }}>Start budgeting</button>`
+        : html`<button class="btn btn-primary" onClick=${function () { var t = reminder.time; askNotify(A).then(function () { finish({ on: true, time: t }); }); }}>Turn on reminders</button>
+          <button class="btn btn-text" onClick=${function () { finish({ on: false, time: reminder.time }); }}>Not now</button>`;
     } else {
       body = html`<div class="lb pad">
         <span class="b-ic" style=${{ width: '56px', height: '56px', background: 'var(--emerald-soft)' }}><${Icon} n="bell" size=${26} color="var(--emerald-deep)" /></span>
@@ -1643,7 +1686,7 @@
     </div>`;
   }
   function AddFlow(p) {
-    var st = p.st, A = p.A, now = p.now, today = L.dkey(now), pre = p.preset || {};
+    var st = p.st, A = p.A, now = p.now, today = L.dkey(now), pre = p.preset || {}, close = p.onClose || A.close;
     var b = L.mainBudget(st), s = b ? L.status(st, b, now) : null;
     var sStep = useState('amount'), step = sStep[0], setStep = sStep[1];
     var sAmt = useState(pre.amount ? String(pre.amount) : ''), amt = sAmt[0], setAmt = sAmt[1];
@@ -1656,7 +1699,7 @@
     function onKey(k) { setAmt(applyKey(amt, k)); }
     function afterAmount() { if (n > 0) setStep(pre.cat ? 'check' : 'cat'); }
     useKeys(onKey, afterAmount, step === 'amount');
-    function back() { if (at <= 0) A.close(); else setStep(order[at - 1]); }
+    function back() { if (at <= 0) close(); else setStep(order[at - 1]); }
     function reset() { setStep('amount'); setAmt(''); setCat(pre.cat || null); setNote(''); setDay(today); setSaved(null); }
     function save() {
       var e = { id: L.uid(), type: 'out', amount: n, note: note.trim(), ts: tsFor(day, today, now), cat: catId || 'other', work: false, bid: b.id };
@@ -1688,14 +1731,14 @@
       if (inPeriod) extra = html`${extra}<div class="card saved-total"><span class="t-s muted">${s.left < 0 ? 'Over budget' : 'Left' + per}</span>
         <span class=${cx('t-label num', s.left < 0 && 'neg')}>${N(Math.abs(s.left))}</span></div>`;
       return html`<div class="layer up">
-        <div class="lh pad"><span style=${{ flex: 1 }}></span><${Back} icon="x" label="Close" onClick=${A.close} /></div>
+        <div class="lh pad"><span style=${{ flex: 1 }}></span><${Back} icon="x" label="Close" onClick=${close} /></div>
         <div class="saved pad">
           <span class="check-big"><${Icon} n="check" size=${34} /></span>
           <div class="t-label" style=${{ marginBottom: '4px' }}>Logged</div>
           ${body}${extra}
           ${streak > 0 && html`<div class="t-s streak-line"><${Icon} n="fire" size=${16} color="var(--warning)" />${streak}-day streak</div>`}
         </div>
-        <div class="lf pad"><button class="btn btn-primary" onClick=${A.close}>Done</button><button class="btn btn-text" onClick=${reset}>Log another</button></div>
+        <div class="lf pad"><button class="btn btn-primary" onClick=${close}>Done</button><button class="btn btn-text" onClick=${reset}>Log another</button></div>
       </div>`;
     }
 
@@ -1814,6 +1857,7 @@
           }) : html`<div class="t-s muted" style=${{ marginTop: '6px' }}>Nothing yet.</div>`}
         </div>
       </div>
+      ${!isWork && L.phaseOf(b, L.dkey(p.now)) === 'live' && html`<div class="lf pad"><button class="btn btn-primary" onClick=${function () { A.add({ cat: id }, true); }}><${Icon} n="plus" size=${20} />Log a purchase in ${c.name}</button></div>`}
     </div>`;
   }
   function CoverLayer(p) {
@@ -2002,7 +2046,7 @@
       A.add();
     }, [ready]);
     // Tell the reminder server about the reminder time, on/off, and the last day something was logged.
-    var pushKey = Push.on() ? [st.reminder.on, st.reminder.time, st.entries.length, (st.checkins || []).length, L.dkey(now)].join('|') : '';
+    var pushKey = Push.on() ? [st.reminder.on, st.news !== false, st.reminder.time, st.entries.length, (st.checkins || []).length, L.dkey(now)].join('|') : '';
     useEffect(function () {
       if (!ready || !Push.on()) return;
       if (!Push.joined() && typeof Notification !== 'undefined' && Notification.permission === 'granted') { Push.join(ref.current).catch(function () { }); return; }
@@ -2068,7 +2112,7 @@
       close: function () { setLayer(null); },
       back: function () { setLayer(layer && layer.prev ? layer.prev : null); },
       cover: function (bid, id, keep) { setLayer({ type: 'cover', bid: bid, id: id, prev: keep ? layer : null }); },
-      add: function (preset) { setNotif(false); setLayer({ type: 'add', preset: Object.assign({ bid: budget ? budget.id : undefined }, preset || {}), k: Date.now() }); },
+      add: function (preset, keep) { setNotif(false); setLayer({ type: 'add', preset: Object.assign({ bid: budget ? budget.id : undefined }, preset || {}), k: Date.now(), prev: keep ? layer : null }); },
       create: function () { setNotif(false); setLayer({ type: 'create', k: Date.now() }); },
       notify: function () { setLayer(null); setNotif(true); },
       jump: function (d) { commit(function (x) { x.offset = (x.offset || 0) + d; }); A.say('Moved ahead ' + d + ' day'); },
@@ -2106,7 +2150,7 @@
       var lay = null;
       if (layer) {
         var lb = layer.bid ? L.findBudget(st, layer.bid) : budget;
-        if (layer.type === 'add') lay = html`<${AddFlow} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
+        if (layer.type === 'add') lay = html`<${AddFlow} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} onClose=${layer.prev ? A.back : A.close} />`;
         else if (layer.type === 'create') lay = html`<${CreateBudget} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
         else if (layer.type === 'whatsnew') lay = html`<${WhatsNew} A=${A} onSeen=${function () { setNewUnseen(false); }} />`;
         else if (layer.type === 'feedback') lay = html`<${FeedbackLayer} st=${st} A=${A} />`;

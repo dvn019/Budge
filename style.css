@@ -617,3 +617,5 @@ body { font-weight: 400; font-optical-sizing: auto; -webkit-font-smoothing: anti
 .wn-notes { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
 .dot-inline { position: static; width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); flex: none; margin-right: 4px; }
 .side-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); }
+.ios-steps ol { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; color: var(--ink-2); line-height: 1.4; }
+.ios-steps b { font-weight: 600; color: var(--ink); }

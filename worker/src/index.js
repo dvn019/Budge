@@ -46,6 +46,21 @@ async function send(env, sub, payload) {
   return r.ok ? 'sent' : 'failed ' + r.status;
 }
 
+// When the live site's version.json shows a new version, tell everyone who wants update news. Once per version.
+async function announce(env) {
+  const r = await fetch(env.SITE_URL + 'version.json?t=' + Date.now(), { cf: { cacheTtl: 0 } });
+  if (!r.ok) return;
+  const v = await r.json();
+  if (!v || !v.version) return;
+  const row = await env.DB.prepare('SELECT v FROM meta WHERE k = ?').bind('last_version').first();
+  if (row && row.v === v.version) return;
+  await env.DB.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)').bind('last_version', v.version).run();
+  if (!row) return; // first run: just remember the current version
+  const { results } = await env.DB.prepare('SELECT * FROM subs WHERE news_flag = 1').all();
+  const body = (v.notes && v.notes[0]) || 'Open Budge to see what changed.';
+  await Promise.all(results.map(sub => send(env, sub, { title: 'Budge ' + v.version + ' is here', body, url: './', tag: 'update' }).catch(() => {})));
+}
+
 function reminder(sub) {
   const n = sub.streak || 0;
   return { title: 'Anything to log today?', body: n > 0 ? `Tap to add it and keep your ${n}-day streak.` : 'Tap to add what you spent.', url: './?add=1' };
@@ -78,19 +93,19 @@ export default {
         const s = d.subscription || {};
         if (typeof s.endpoint !== 'string' || !s.endpoint.startsWith('https://') || !s.keys || !s.keys.p256dh || !s.keys.auth) return json({ error: 'bad subscription' }, 400, h);
         const time = validTime(d.time) ? d.time : '20:00', tz = typeof d.tz === 'string' && d.tz.length < 64 ? d.tz : 'Africa/Lagos';
-        await env.DB.prepare(`INSERT INTO subs (id, endpoint, p256dh, auth, time, tz, on_flag, last_logged, streak, created_at, updated_at)
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)
+        await env.DB.prepare(`INSERT INTO subs (id, endpoint, p256dh, auth, time, tz, on_flag, last_logged, streak, created_at, updated_at, news_flag)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, ?11)
           ON CONFLICT(id) DO UPDATE SET endpoint = ?2, p256dh = ?3, auth = ?4, time = ?5, tz = ?6, on_flag = ?7,
-            last_logged = COALESCE(?8, last_logged), streak = ?9, updated_at = ?10`)
-          .bind(d.id, s.endpoint, s.keys.p256dh, s.keys.auth, time, tz, d.on === false ? 0 : 1, validDay(d.lastLogged) ? d.lastLogged : null, +d.streak || 0, now).run();
+            last_logged = COALESCE(?8, last_logged), streak = ?9, updated_at = ?10, news_flag = ?11`)
+          .bind(d.id, s.endpoint, s.keys.p256dh, s.keys.auth, time, tz, d.on === false ? 0 : 1, validDay(d.lastLogged) ? d.lastLogged : null, +d.streak || 0, now, d.news === false ? 0 : 1).run();
         return json({ ok: true }, 200, h);
       }
       if (url.pathname === '/update') {
         await env.DB.prepare(`UPDATE subs SET time = COALESCE(?2, time), tz = COALESCE(?3, tz), on_flag = COALESCE(?4, on_flag),
-          last_logged = COALESCE(?5, last_logged), streak = COALESCE(?6, streak), updated_at = ?7 WHERE id = ?1`)
+          last_logged = COALESCE(?5, last_logged), streak = COALESCE(?6, streak), updated_at = ?7, news_flag = COALESCE(?8, news_flag) WHERE id = ?1`)
           .bind(d.id, validTime(d.time) ? d.time : null, typeof d.tz === 'string' && d.tz.length < 64 ? d.tz : null,
             typeof d.on === 'boolean' ? (d.on ? 1 : 0) : null, validDay(d.lastLogged) ? d.lastLogged : null,
-            Number.isFinite(d.streak) ? d.streak : null, now).run();
+            Number.isFinite(d.streak) ? d.streak : null, now, typeof d.news === 'boolean' ? (d.news ? 1 : 0) : null).run();
         return json({ ok: true }, 200, h);
       }
       if (url.pathname === '/unsubscribe') {
@@ -109,8 +124,10 @@ export default {
     }
   },
 
-  // Every 15 minutes: remind anyone whose time has passed today, who hasn't logged and hasn't been reminded.
+  // Every 15 minutes: announce a new release (once), then remind anyone whose time has passed today,
+  // who hasn't logged and hasn't been reminded.
   async scheduled(event, env, ctx) {
+    ctx.waitUntil(announce(env).catch(() => {}));
     const { results } = await env.DB.prepare('SELECT * FROM subs WHERE on_flag = 1').all();
     const jobs = [];
     for (const sub of results) {
