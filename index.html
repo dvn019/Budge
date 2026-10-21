@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budge</title>
+<meta name="description" content="See what’s left as you spend. A weekly budget split into pots. Log what you buy in two taps. Your data stays on your phone.">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Budge">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dvn019.github.io/budge/">
+<meta property="og:title" content="Budge: see what’s left as you spend">
+<meta property="og:description" content="See what’s left as you spend. A weekly budget split into pots. Log what you buy in two taps. Your data stays on your phone.">
+<meta property="og:image" content="https://dvn019.github.io/budge/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Budge: see what’s left as you spend">
+<meta name="twitter:description" content="See what’s left as you spend. A weekly budget split into pots. Log what you buy in two taps. Your data stays on your phone.">
+<meta name="twitter:image" content="https://dvn019.github.io/budge/og.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="style.css?v=ad40e571">
+</head>
+<body>
+<div id="root"></div>
+<script>
+window.BUDGE_PWA = true;
+window.BUDGE_CONFIG = { tally: '1WArAM', version: 'ad40e571' };
+window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__installEvt = e; window.dispatchEvent(new Event('budge-installable')); });
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    var had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+    navigator.serviceWorker.addEventListener('controllerchange', function () { if (had) window.dispatchEvent(new Event('budge-update')); });
+  });
+}
+</script>
+<script src="vendor/preact-htm.js"></script>
+<script data-goatcounter="https://budge.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<script src="app.js?v=ad40e571"></script>
+</body>
+</html>
