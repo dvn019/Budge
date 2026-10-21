@@ -578,3 +578,33 @@ body { font-weight: 400; font-optical-sizing: auto; -webkit-font-smoothing: anti
 .streak-line { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-weight: 500; }
 .day-label { font-weight: 500; }
 .sum-top .grow { flex: 1; min-width: 0; }
+
+/* ---------- v11: where it went ---------- */
+.wiw { display: flex; flex-direction: column; gap: 16px; }
+.seg.full { display: flex; width: 100%; }
+.seg.full button { flex: 1; }
+.wiw-nav { display: flex; align-items: center; gap: 4px; margin: -4px -8px; }
+.wiw-label { flex: 1; text-align: center; font-weight: 500; }
+.wiw .d-l { font-size: 34px; }
+.wiw-rows { display: flex; flex-direction: column; gap: 14px; }
+.wiw-row { display: flex; align-items: center; gap: 12px; }
+.wiw-row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.wiw-top { display: flex; justify-content: space-between; gap: 8px; }
+.wiw-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wiw-amt { font-size: 15px; font-weight: 600; }
+.wiw-bot { display: flex; align-items: center; gap: 10px; }
+.wiw-bar { flex: 1; height: 6px; border-radius: 6px; background: var(--track); overflow: hidden; }
+.wiw-bar i { display: block; height: 100%; border-radius: 6px; background: var(--ink-2); transition: width .5s cubic-bezier(.2, .8, .2, 1); }
+.wiw-pct { font-size: 13px; color: var(--muted); width: 38px; text-align: right; }
+.wiw-empty { padding: 8px 0 4px; }
+.chart-month { gap: 3px; }
+.chart-month .b { border-radius: 3px; }
+
+/* ---------- v11: swipe to remove ---------- */
+.swipe { position: relative; overflow: hidden; overflow: clip; border-radius: 14px; }
+.swipe-back { position: absolute; top: 0; right: 0; bottom: 0; width: 96px; background: var(--critical); color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.swipe-front { position: relative; background: var(--surface); transition: transform .22s cubic-bezier(.2, .8, .2, 1); touch-action: pan-y; }
+.swipe-front.dragging { transition: none; }
+.swipe-hint { display: flex; align-items: center; gap: 6px; margin-bottom: -8px; }
+.toast-undo { display: flex; align-items: center; gap: 14px; white-space: normal; text-align: left; pointer-events: auto; max-width: calc(100% - 32px); }
+.toast-act { color: #4ADE80; font-weight: 600; font-size: 14px; flex: none; }

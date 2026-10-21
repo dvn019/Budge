@@ -1116,6 +1116,58 @@
       })}
     </div>`;
   }
+  // "Where it went": every allocation's share of spending for a day, week or month you choose.
+  function WhereItWent(p) {
+    var st = p.st, b = p.b, now = p.now, today = L.dkey(now);
+    var su = useState('week'), unit = su[0], setUnit = su[1], so = useState(0), off = so[0], setOff = so[1];
+    var start, end, label;
+    if (unit === 'day') { start = end = L.addDays(today, off); label = off === 0 ? 'Today' : off === -1 ? 'Yesterday' : L.shortDate(start); }
+    else {
+      start = L.shiftPeriod(unit, unit === 'month' ? L.monthStart(today) : L.weekStart(today), off);
+      end = unit === 'month' ? L.addDays(start, L.daysInMonth(start) - 1) : L.addDays(start, 6);
+      label = (off === 0 ? 'This ' + unit : off === -1 ? 'Last ' + unit : '') + (off >= -1 ? ' · ' : '') + L.rangeLabel(start, end, unit);
+    }
+    var ents = st.entries.filter(function (e) { var k = L.entryDay(e); return L.personalOut(e) && k >= start && k <= end; });
+    var total = ents.reduce(function (a, e) { return a + e.amount; }, 0), by = {};
+    ents.forEach(function (e) { by[e.cat] = (by[e.cat] || 0) + e.amount; });
+    var rows = Object.keys(by).sort(function (x, y) { return by[y] - by[x]; });
+    var cols = [];
+    if (unit !== 'day') {
+      var n = L.diffDays(start, end) + 1;
+      for (var k = 0; k < n; k++) cols.push({ day: L.addDays(start, k), v: 0 });
+      ents.forEach(function (e) { var i = L.diffDays(start, L.entryDay(e)); if (cols[i]) cols[i].v += e.amount; });
+    }
+    function pick(v) { setUnit(v); setOff(0); }
+    var canNext = off < 0;
+    return html`<div class="card wiw">
+      <${Seg} full=${true} value=${unit} onChange=${pick} options=${[{ v: 'day', label: 'Day' }, { v: 'week', label: 'Week' }, { v: 'month', label: 'Month' }]} />
+      <div class="wiw-nav">
+        <button class="icon-btn" aria-label=${'Previous ' + unit} onClick=${function () { setOff(off - 1); }}><${Icon} n="left" size=${18} /></button>
+        <div class="wiw-label t-s">${label}</div>
+        <button class="icon-btn" aria-label=${'Next ' + unit} disabled=${!canNext} style=${{ opacity: canNext ? 1 : .25 }} onClick=${function () { if (canNext) setOff(off + 1); }}><${Icon} n="right" size=${18} /></button>
+      </div>
+      <div><div class="t-cap muted">Spent</div><div class="d-l num fit">${N(total)}</div></div>
+      ${rows.length ? html`<div class="wiw-rows">${rows.map(function (id) {
+        var pct = total ? by[id] / total : 0;
+        return html`<div class="wiw-row" key=${id}>
+          <${CatIcon} id=${id} size=${36} />
+          <div class="grow"><div class="wiw-top"><span class="wiw-name">${L.cat(id).name}</span><span class="num wiw-amt">${N(by[id])}</span></div>
+            <div class="wiw-bot"><div class="wiw-bar"><i style=${{ width: Math.max(2, pct * 100) + '%' }}></i></div><span class="num wiw-pct">${Math.round(pct * 100)}%</span></div></div>
+        </div>`;
+      })}</div>` : html`<div class="t-s muted wiw-empty">Nothing logged ${unit === 'day' ? (off === 0 ? 'today' : 'that day') : (off === 0 ? 'this ' + unit + ' yet' : 'that ' + unit)}.</div>`}
+      ${unit !== 'day' && total > 0 && html`<${DayBars} cols=${cols} unit=${unit} today=${today} />`}
+    </div>`;
+  }
+  function DayBars(p) {
+    var max = Math.max.apply(null, p.cols.map(function (c) { return c.v; }).concat([1])), wk = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    return html`<div class=${cx('chart', p.unit === 'month' && 'chart-month')} style=${{ gridTemplateColumns: 'repeat(' + p.cols.length + ', 1fr)' }} role="img"
+      aria-label=${'Spending by day: ' + p.cols.filter(function (c) { return c.v; }).map(function (c) { return L.shortDate(c.day) + ' ' + N(c.v); }).join(', ')}>
+      ${p.cols.map(function (c, i) {
+        var lab = p.unit === 'week' ? wk[i] : (i % 7 === 0 ? String(+c.day.slice(8)) : '');
+        return html`<div class="col" title=${L.shortDate(c.day) + ': ' + N(c.v)}><div class="b" style=${{ height: c.v ? Math.max(6, c.v / max * 100) + '%' : '4px', background: c.v ? 'var(--ink-2)' : 'var(--track)' }}></div><div class="d">${lab}</div></div>`;
+      })}
+    </div>`;
+  }
   function Insights(p) {
     var st = p.st, b = p.b, A = p.A, now = p.now, s = L.status(st, b, now), u = unitWord(s.unit), once = b.kind === 'once';
     var hist = b.history.filter(function (h) { return h.active; });
@@ -1140,33 +1192,26 @@
     var past = once ? [] : b.history.slice().reverse();
     return html`<div class="pad tabpad">
       <${BudgetBar} b=${b} A=${A} />
-      <div>
+      <h1 class="h1">Insights</h1>
+      <${WhereItWent} st=${st} b=${b} now=${now} />
+      ${isCurrent && !once && html`<div class="banner plain">
+        <span class="b-ic"><${Icon} n="calendar" size=${20} /></span>
+        <div class="b-text"><div class="t-label">Your first review arrives ${b.rhythm === 'month' ? 'on the 1st' : 'on Monday'}</div>
+        <div class="t-s muted">Budge will show how the ${u} went and what to change.</div></div>
+      </div>`}
+      ${!isCurrent && html`<div>
         <div class="sec-head" style=${{ alignItems: 'center' }}>
-          <h1 class="h1">Insights</h1>
-          ${!isCurrent && hist.length > 1 && html`<div style=${{ display: 'flex', margin: '0 -8px 0 0' }}>
+          <div><div class="t-title">Review</div><div class="t-s muted">${label}</div></div>
+          ${hist.length > 1 && html`<div style=${{ display: 'flex', margin: '0 -8px 0 0' }}>
             <button class="icon-btn" aria-label="Older review" disabled=${idx === 0} style=${{ opacity: idx === 0 ? .25 : 1 }} onClick=${function () { if (idx > 0) p.setIdx(idx - 1); }}><${Icon} n="left" size=${18} /></button>
             <button class="icon-btn" aria-label="Newer review" disabled=${idx === hist.length - 1} style=${{ opacity: idx === hist.length - 1 ? .25 : 1 }} onClick=${function () { if (idx < hist.length - 1) p.setIdx(idx + 1); }}><${Icon} n="right" size=${18} /></button>
           </div>`}
         </div>
-        <div class="t-s muted" style=${{ marginTop: '4px' }}>${label}</div>
-        ${!isCurrent && html`<div style=${{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap' }}>
+        <div style=${{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
           <span class="t-s num">Spent <b>${N(p0.spent)}</b> of ${N(p0.budget)}</span>
           ${p0.over > 0 ? html`<span class="tag tag-bad">${N(p0.over)} over</span>` : p0.saved > 0 ? html`<span class="tag tag-good">${N(p0.saved)} left over</span>` : html`<span class="tag tag-none">On budget</span>`}
-        </div>`}
-      </div>
-      ${isCurrent && !once && html`<div class="banner plain">
-        <span class="b-ic"><${Icon} n="calendar" size=${20} /></span>
-        <div class="b-text"><div class="t-label">Your first review arrives ${b.rhythm === 'month' ? 'on the 1st' : 'on Monday'}</div>
-        <div class="t-s muted">Budge will show where the money went and what to change.</div></div>
+        </div>
       </div>`}
-      ${r.empty ? html`<${Empty} icon="bulb" title="Nothing to review yet" text="Log a few purchases and you’ll see where your money goes." />`
-        : html`<div class="card">
-          <div style=${{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <${CatIcon} id=${r.topId} size=${40} />
-            <div style=${{ minWidth: 0 }}><div class="t-title">${r.headline}</div><div class="t-cap muted num">${r.sub}</div></div>
-          </div>
-          <${Chart} bars=${r.bars} color="var(--ink-2)" />
-        </div>`}
       ${!isCurrent && !r.empty && r.suggestions.map(function (sg) {
         var state = b.done[sg.key];
         if (state === 'skipped') return null;
@@ -1375,6 +1420,23 @@
       <button class="btn btn-dark" disabled=${!name.trim()} onClick=${add}>Add allocation</button>
     </div>`;
   }
+  // A row you can swipe left to reveal "Remove".
+  function SwipeRow(p) {
+    var sd = useState(0), dx = sd[0], setDx = sd[1], drag = useRef(null), W = 96;
+    function down(e) { if (p.locked) return; drag.current = { x: e.clientX, y: e.clientY, base: dx, on: false, id: e.pointerId }; }
+    function move(e) {
+      var g = drag.current; if (!g) return;
+      var mx = e.clientX - g.x, my = e.clientY - g.y;
+      if (!g.on) { if (Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my)) { g.on = true; try { e.currentTarget.setPointerCapture(g.id); } catch (er) { } } else if (Math.abs(my) > 8) { drag.current = null; return; } else return; }
+      setDx(Math.max(-W - 16, Math.min(0, g.base + mx)));
+    }
+    function up() { var g = drag.current; drag.current = null; if (!g || !g.on) return; setDx(dx < -W / 2 ? -W : 0); }
+    return html`<div class="swipe">
+      <button class="swipe-back" style=${{ visibility: dx ? 'visible' : 'hidden' }} tabindex=${dx ? 0 : -1} onClick=${function () { setDx(0); p.onRemove(); }}>Remove</button>
+      <div class=${cx('swipe-front', drag.current && drag.current.on && 'dragging')} style=${{ transform: 'translateX(' + dx + 'px)' }}
+        onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${up}>${p.children}</div>
+    </div>`;
+  }
   function SplitEditor(p) {
     var c = p.cats;
     var op = useState(function () { return L.allCats().filter(function (x) { return c[x.id] > 0; }).map(function (x) { return x.id; }); });
@@ -1383,19 +1445,25 @@
     var total = L.totalBudget(c);
     function setV(id, v) { var n = Object.assign({}, c); n[id] = Math.min(+digits(v) || 0, 99999999); p.onChange(n); }
     function focus(id) { setTimeout(function () { var el = document.getElementById('sp-' + id); if (el) el.focus(); }, 40); }
+    function remove(id) {
+      var prevC = c, prevOpen = open, n = Object.assign({}, c), sp = p.spent && p.spent[id];
+      n[id] = 0; p.onChange(n); setOpen(open.filter(function (x) { return x !== id; }));
+      if (p.A) p.A.say(L.cat(id).name + ' removed' + (sp ? '. ' + N(sp) + ' spent still counts' : ''), function () { p.onChange(prevC); setOpen(prevOpen); });
+    }
     var rest = L.allCats().filter(function (x) { return open.indexOf(x.id) < 0; });
     return html`<div style=${{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div class="card total-card"><span class="t-s muted">Total</span>
         <span><span class="t-title num" style=${{ fontWeight: 600, fontSize: '22px' }}>${N(total)}</span><span class="t-s muted"> ${perUnit(p.unit)}</span></span></div>
+      ${open.length > 1 && html`<div class="t-cap muted swipe-hint"><${Icon} n="left" size=${14} />Swipe left on an allocation to remove it</div>`}
       <div class="list">
         ${open.map(function (id) {
           var cc = L.cat(id);
-          return html`<div class="split-row" key=${id}>
+          return html`<${SwipeRow} key=${id} locked=${open.length <= 1} onRemove=${function () { remove(id); }}><div class="split-row">
             <${CatIcon} id=${id} size=${40} />
             <label class="grow" for=${'sp-' + id}><div class="t-label">${cc.name}</div>${id === 'treats' && html`<div class="t-cap muted">Eating out, snacks, small buys</div>`}${id === 'subs' && html`<div class="t-cap muted">Netflix, Spotify, apps</div>`}</label>
             <input id=${'sp-' + id} class="money-in" inputmode="numeric" aria-label=${cc.name + ' allocation'} value=${c[id] ? N(c[id]) : ''} placeholder="₦0"
               onInput=${function (e) { setV(id, e.target.value); }} />
-          </div>`;
+          </div></${SwipeRow}>`;
         })}
       </div>
       ${adding ? html`<${NewPot} st=${p.st} A=${p.A} onCancel=${function () { setAdding(false); }} onAdd=${function (id) { setAdding(false); setOpen(open.concat([id])); focus(id); }} />`
@@ -1437,7 +1505,7 @@
           </div>
           <div class="t-cap muted" style=${{ marginTop: '6px' }}>Keeps the same proportions. Or change single allocations below.</div>
         </div>
-        <${SplitEditor} key=${k} cats=${cats} unit=${L.unitOf(b)} onChange=${setCats} st=${p.st} A=${A} />
+        <${SplitEditor} key=${k} cats=${cats} unit=${L.unitOf(b)} onChange=${setCats} st=${p.st} A=${A} spent=${L.status(p.st, b, Date.now()).byCat} />
       </div>
       <div class="lf pad"><button class="btn btn-primary" disabled=${L.totalBudget(cats) < 1000} onClick=${function () {
         A.commitB(b.id, function (x) { x.cats = cats; }); A.say('Budget updated'); A.close();
@@ -1952,7 +2020,7 @@
       window.addEventListener('resize', fitAll);
       return function () { clearTimeout(t); window.removeEventListener('resize', fitAll); };
     });
-    useEffect(function () { if (!toast) return; var t = setTimeout(function () { setToast(null); }, 2200); return function () { clearTimeout(t); }; }, [toast]);
+    useEffect(function () { if (!toast) return; var t = setTimeout(function () { setToast(null); }, toast.undo ? 5000 : 2200); return function () { clearTimeout(t); }; }, [toast]);
     useEffect(function () { if (!notif) return; var t = setTimeout(function () { setNotif(false); }, 7000); return function () { clearTimeout(t); }; }, [notif]);
 
     function markReview(bid) {
@@ -1962,7 +2030,7 @@
     var A = {
       commit: commit, replace: replace,
       commitB: function (bid, fn) { commit(function (x) { var b = L.findBudget(x, bid); if (b) fn(b, x); }); },
-      say: function (m) { setToast({ m: m, k: Date.now() }); },
+      say: function (m, undo) { setToast({ m: m, k: Date.now(), undo: undo }); },
       sfx: function (n) { SFX.play(n); },
       home: function () { setLayer(null); setNav({ tab: 'home' }); setView({ unit: null, offset: 0 }); setIdx(null); scrollTop(); },
       tab: function (t) {
@@ -2036,7 +2104,8 @@
           <div style=${{ flex: 1, minWidth: 0 }}><div class="n-top"><span>Budge</span><span>now</span></div>
             <b>Anything to log today?</b><span>${streakN > 0 ? 'Tap to add it and keep your ' + streakN + '-day streak.' : 'Tap to add what you spent.'}</span></div>
         </button>`}
-        ${toast && html`<div class="toast" key=${toast.k} role="status">${toast.m}</div>`}
+        ${toast && html`<div class=${cx('toast', toast.undo && 'toast-undo')} key=${toast.k} role="status"><span>${toast.m}</span>
+          ${toast.undo && html`<button class="toast-act" onClick=${function () { toast.undo(); setToast(null); }}>Undo</button>`}</div>`}
         ${upd && html`<div class="update-card" role="dialog" aria-label="Update available">
           <div class="update-top"><${Logo} size=${36} /><div class="grow"><div class="t-label">Budge has been updated</div>
             ${upd.version && html`<div class="t-cap muted">Version ${upd.version}</div>`}</div></div>
