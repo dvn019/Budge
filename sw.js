@@ -1,6 +1,6 @@
 // Budge service worker: works offline, shows notifications.
-const CACHE = 'budge-de3ffa72';
-const ASSETS = ["./", "index.html", "style.css?v=de3ffa72", "app.js?v=de3ffa72", "vendor/preact-htm.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/badge-96.png", "icons/favicon.svg"];
+const CACHE = 'budge-efda91b3';
+const ASSETS = ["./", "index.html", "style.css?v=efda91b3", "app.js?v=efda91b3", "vendor/preact-htm.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/badge-96.png", "icons/favicon.svg", "fonts/inter-latin-wght-normal.woff2", "fonts/inter-latin-ext-wght-normal.woff2"];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
@@ -17,6 +17,7 @@ self.addEventListener('fetch', e => {
       .catch(() => caches.match('index.html')));
     return;
   }
+  if (url.pathname.endsWith('/version.json')) return;
   if (url.origin === location.origin || url.host.endsWith('fonts.googleapis.com') || url.host.endsWith('fonts.gstatic.com')) {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(r => {
       if (r.ok || r.type === 'opaque') { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }

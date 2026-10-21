@@ -1,3 +1,5 @@
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900; src: url(fonts/inter-latin-wght-normal.woff2) format('woff2-variations'), url(fonts/inter-latin-wght-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900; src: url(fonts/inter-latin-ext-wght-normal.woff2) format('woff2-variations'), url(fonts/inter-latin-ext-wght-normal.woff2) format('woff2'); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
 /* Layout: one phone-width app column. On wide screens it sits in a device frame beside a short "things to try" guide.
    Budge is designed light-only (matches the Figma system), so the palette is set once and never inverted. */
 :root {
@@ -524,3 +526,55 @@ button.sum-cell:hover .t-cap { color: var(--ink); text-decoration: underline; }
 .desk .onboard-hero { min-height: 0; }
 /* Setup amount step: the middle scrolls so Continue is always reachable */
 .lb-amount { min-height: 0; flex-shrink: 1; }
+
+/* ---------- v10: no tap zoom, update card ---------- */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.money-in, .time-in, .name-in, .date-pair .time-in, input, select, textarea { font-size: 16px; }
+.update-card { position: absolute; left: 16px; right: 16px; bottom: 92px; z-index: 70; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px; box-shadow: 0 20px 50px rgba(11, 15, 13, .18); display: flex; flex-direction: column; gap: 12px; animation: slideUp .3s cubic-bezier(.2, .8, .2, 1); }
+.update-top { display: flex; gap: 12px; align-items: center; }
+.update-notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.update-card .btn-row { display: flex; gap: 8px; }
+.update-card .btn-row .btn { flex: 1; width: auto; }
+.desk .update-card { left: auto; right: 24px; bottom: auto; top: 24px; width: 340px; }
+
+/* ---------- v10: calmer type. Heavy weight only for money; titles 600, labels 500, body 400 ---------- */
+body { font-weight: 400; font-optical-sizing: auto; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.d-xl { font-weight: 650; letter-spacing: -0.04em; }
+.d-l { font-weight: 650; letter-spacing: -0.035em; }
+.h1 { font-weight: 600; letter-spacing: -0.025em; }
+.h2, .lh .lh-title { font-weight: 600; letter-spacing: -0.015em; }
+.t-title { font-weight: 600; }
+.t-label, .row .name, .chip, .seg button, .link, .pots-edit, .badge-name, .side-item, .group-title, .tile, .date-pair label { font-weight: 500; }
+.row .amt { font-weight: 600; }
+.t-s, .t-cap, .meta, .t-body { font-weight: 400; }
+.onboard-title { font-weight: 650; letter-spacing: -0.03em; }
+.onboard-brand, .side-brand { font-weight: 700; }
+.btn { font-weight: 600; }
+.tank-foot { font-weight: 500; }
+.fw-r { font-weight: 400; }
+
+/* ---------- v10: logging steps ---------- */
+.step-sub { margin: 6px 0 0; font-size: 15px; }
+.step-in { animation: stepIn .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes stepIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .step-in { animation: none; } }
+.ap-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ap-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; border-radius: 18px; background: #FAFAFA; border: 1px solid #EEEEEE; text-align: left; min-width: 0; transition: border-color .15s, background .15s, transform .1s; }
+.ap-tile:active { transform: scale(.98); }
+.ap-tile.on { border-color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--ink); }
+.ap-name { font-size: 15px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ap-left { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ap-left.warn { color: var(--warning-deep); }
+.ap-sub { margin: 18px 0 8px 2px; }
+.sum-card { border-radius: 20px; background: #FAFAFA; border: 1px solid #EEEEEE; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.sum-top { display: flex; align-items: center; gap: 12px; }
+.sum-amt { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+.sum-change { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid #EEEEEE; flex-wrap: wrap; }
+.sum-change .t-s { flex: 1; min-width: 0; }
+.sum-from { font-size: 14px; color: var(--muted); }
+.sum-to { font-size: 15px; font-weight: 600; }
+.fld { display: flex; flex-direction: column; gap: 8px; }
+.field-big { height: 64px; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+.streak-line { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-weight: 500; }
+.day-label { font-weight: 500; }
+.sum-top .grow { flex: 1; min-width: 0; }

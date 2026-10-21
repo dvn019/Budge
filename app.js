@@ -187,7 +187,7 @@
       { id: 'first', icon: 'calendar', name: 'First ' + u + ' done', text: 'Finish your first budget ' + u, got: hist.length > 0 },
       { id: 'streak7', icon: 'fire', name: '7-day streak', text: 'Log 7 days in a row', got: best >= 7, prog: Math.min(cur, 7) / 7 },
       { id: 'under', icon: 'target', name: 'Under budget', text: 'Finish a ' + u + ' with money left', got: hist.some(function (h) { return h.spent <= h.budget; }) },
-      { id: 'save10k', icon: 'piggy', name: '\u20a610k saved', text: 'Save \u20a610,000 in total', got: saved >= 10000, prog: Math.min(saved, 10000) / 10000 },
+      { id: 'save10k', icon: 'piggy', name: '\u20a610k left over', text: 'Have \u20a610,000 left over in total', got: saved >= 10000, prog: Math.min(saved, 10000) / 10000 },
       { id: 'nospend', icon: 'star', name: 'No-spend day', text: 'Have a day you spend nothing', got: (state.checkins || []).length > 0 },
       { id: 'cover', icon: 'coins', name: 'Covered an allocation', text: 'Move money to cover an allocation', got: !!state.covered }
     ];
@@ -454,7 +454,7 @@
           r.suggestions.push({
             key: 'treat-' + p.start, kind: 'treat', amount: x,
             title: limit ? 'Make your Treats allocation ' + naira(x) + '?' : 'Give treats a ' + naira(x) + ' allocation?',
-            detail: 'Would have saved ' + naira(treatSpent - x) + ' ' + label
+            detail: 'You’d have had ' + naira(treatSpent - x) + ' more left ' + label
           });
         }
       }
@@ -515,7 +515,7 @@
   function sampleState(now) {
     var today = dkey(now), w0 = weekStart(today), w1 = addDays(w0, -7), w2 = addDays(w0, -14);
     var s = blankState();
-    s.sample = true; s.name = 'Ola'; s.reminderAsked = true;
+    s.sample = true; s.reminderAsked = true;
     var ev = newBudget({ name: 'Everyday', kind: 'repeat', rhythm: 'week',
       cats: { food: 12000, treats: 15000, transport: 7000, fuel: 5000, data: 4000, household: 3000, other: 4000, bills: 0, partner: 0, pets: 0 } }, now);
     var mv = newBudget({ name: 'Moving house', kind: 'once', start: addDays(today, -14), end: addDays(today, 18),
@@ -562,7 +562,7 @@
     add(mv, addDays(today, -2), '10:15', 'household', 18500, 'Paint and brushes');
     s.entries = E;
     ev.periodStart = w2; ev.createdAt = parseKey(w2).getTime();
-    s.entries = s.entries.filter(function (e) { return e.bid !== mv.id; });
+    s.entries = s.entries.filter(function (e) { return e.bid !== mv.id && e.type === 'out' && !e.work; });
     s.budgets = [ev]; s.lastBid = ev.id; s.mainBid = ev.id;
     rolloverAll(s, now);
     return s;
@@ -817,7 +817,6 @@
     return html`<button class="row" onClick=${p.onClick}>
       ${isIn ? html`<${InIcon} size=${40} />` : html`<${CatIcon} id=${e.cat} size=${40} />`}
       <div class="grow"><div class="name">${name}</div><div class="meta">${meta}</div></div>
-      ${e.work && html`<span class="tag tag-work">Work</span>`}
       <div class=${cx('amt num', isIn && 'pos')}>${isIn ? '+' : ''}${N(e.amount)}</div>
     </button>`;
   }
@@ -905,45 +904,6 @@
         : html`<div class="pad"><${Empty} icon="warn" title="You’re offline" text="Connect to the internet to send feedback." /></div>`}
     </div>`;
   }
-  function MonthLayer(p) {
-    var st = p.st, A = p.A, o = useState(p.offset || 0), off = o[0], setOff = o[1];
-    var m = L.monthView(st, p.now, off), maxBar = Math.max(m.moneyIn, m.spent) || 1;
-    var personal = m.byBudget.reduce(function (a, x) { return a + x.spent; }, 0);
-    return html`<div class="layer">
-      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">${m.label}</div>
-        <button class="icon-btn" aria-label="Previous month" onClick=${function () { setOff(off - 1); }}><${Icon} n="left" size=${18} /></button>
-        <button class="icon-btn" aria-label="Next month" disabled=${off >= 0} style=${{ opacity: off >= 0 ? .25 : 1 }} onClick=${function () { if (off < 0) setOff(off + 1); }}><${Icon} n="right" size=${18} /></button></div>
-      <div class="lb pad">
-        <div>
-          <div class=${cx('d-l num fit', m.kept < 0 ? 'neg' : '')}>${m.kept < 0 ? '−' : ''}${N(Math.abs(m.kept))}</div>
-          <div class="t-s muted" style=${{ marginTop: '4px' }}>${m.kept >= 0 ? 'kept from what came in' : 'more went out than came in'}</div>
-        </div>
-        <div class="card" style=${{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div class="io-row"><span class="t-cap muted">Money in</span><div class="io-bar"><i style=${{ width: m.moneyIn / maxBar * 100 + '%', background: 'var(--emerald)' }}></i></div><span class="t-s num">${N(m.moneyIn)}</span></div>
-          <div class="io-row"><span class="t-cap muted">Money out</span><div class="io-bar"><i style=${{ width: m.spent / maxBar * 100 + '%', background: 'var(--ink)' }}></i></div><span class="t-s num">${N(m.spent)}</span></div>
-        </div>
-        <div>
-          <div class="t-title" style=${{ marginBottom: '4px' }}>Where it went</div>
-          ${m.byBudget.length || m.work ? html`<div class="list">
-            ${m.byBudget.map(function (x) { return html`<div class="row" key=${x.id}><div class="grow"><div class="name">${x.name}</div>
-              <div style=${{ marginTop: '8px' }}><${Bar} ratio=${x.spent / (m.spent || 1)} color="var(--ink)" /></div></div><div class="amt num">${N(x.spent)}</div></div>`; })}
-            ${m.work > 0 && html`<div class="row"><div class="grow"><div class="name">Work costs</div><div class="meta">Not in any budget</div></div><div class="amt num">${N(m.work)}</div></div>`}
-          </div>` : html`<div class="t-s muted">Nothing spent this month.</div>`}
-        </div>
-        <div>
-          <div class="t-title" style=${{ marginBottom: '4px' }}>Where it came from</div>
-          ${m.incomeEntries.length ? html`<div class="list">${m.incomeEntries.map(function (e) { return html`<${EntryRow} key=${e.id} e=${e} onClick=${function () { A.open({ type: 'edit', id: e.id }); }} />`; })}</div>`
-            : html`<${Empty} icon="in" title="No money in recorded" text="Use + on a budget, then Money in, when you get paid." />`}
-        </div>
-        ${personal > 0 && m.moneyIn > 0 && html`<div class="tip">
-          <span class="b-ic" style=${{ background: 'var(--warning-soft)' }}><${Icon} n="tip" size=${20} color="var(--warning-deep)" /></span>
-          <div class="t-s" style=${{ flex: 1 }}>${personal > m.moneyIn ? 'Your budgets used more than came in this month. The rest came from money you already had.' : Math.round(personal / m.moneyIn * 100) + '% of what came in went on your budgets.' + (m.kept > 0 ? ' Move the ' + N(m.kept) + ' you kept to savings before it gets spent.' : '')}</div>
-        </div>`}
-      </div>
-    </div>`;
-  }
-  // ================= inside a budget =================
-  // Single-budget app: screens no longer need a budget name bar.
   function BudgetBar() { return null; }
   function PotRow(p) {
     var pt = p.pot, c = L.cat(pt.id);
@@ -990,7 +950,7 @@
   function nudgeFor(st, b, s) {
     if (s.phase !== 'live' || b.nudgeOff === s.today) return null;
     var over = s.pots.filter(function (x) { return x.state === 'over' && x.budget > 0; })[0];
-    if (over) return { kind: 'cover', id: over.id, btn: 'Cover', text: L.cat(over.id).name + ' is ' + N(-over.left) + ' over. Cover it from another allocation?' };
+    if (over) return { kind: 'cover', id: over.id, btn: 'Move money', text: L.cat(over.id).name + ' is ' + N(-over.left) + ' over. Move money from another allocation?' };
     var near = s.pots.filter(function (x) { return x.state === 'near' && x.left > 0; })[0];
     if (near && s.daysLeft > 1) return { kind: 'view', id: near.id, btn: 'View', text: L.cat(near.id).name + ' is almost empty: ' + N(near.left) + ' left for ' + s.daysLeft + ' days.' };
     if (b.kind !== 'repeat') return null;
@@ -999,7 +959,7 @@
     var under = s.pots.filter(function (x) { return x.budget > 0 && x.left >= 1000 && x.spent / x.budget < gone * 0.5; }).sort(function (x, y) { return y.left - x.left; })[0];
     if (!under) return null;
     var amt = Math.max(500, Math.floor(under.left * 0.4 / 500) * 500);
-    return { kind: 'save', id: under.id, amt: amt, btn: 'Move', text: L.cat(under.id).name + ' is ' + N(under.left) + ' under. Move ' + N(amt) + ' to savings?' };
+    return { kind: 'save', id: under.id, amt: amt, btn: 'Set aside', text: L.cat(under.id).name + ' has ' + N(under.left) + ' left. Set ' + N(amt) + ' aside so it doesn’t get spent?' };
   }
   // ================= desktop =================
   var QR = {"n": 29, "d": "M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM10 0h1v1h-1zM12 0h1v1h-1zM13 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM16 0h1v1h-1zM18 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM25 0h1v1h-1zM26 0h1v1h-1zM27 0h1v1h-1zM28 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM14 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM17 1h1v1h-1zM19 1h1v1h-1zM22 1h1v1h-1zM28 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM12 2h1v1h-1zM13 2h1v1h-1zM14 2h1v1h-1zM15 2h1v1h-1zM16 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM20 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM25 2h1v1h-1zM26 2h1v1h-1zM28 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM15 3h1v1h-1zM17 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM25 3h1v1h-1zM26 3h1v1h-1zM28 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM15 4h1v1h-1zM17 4h1v1h-1zM19 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM28 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM9 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM16 5h1v1h-1zM17 5h1v1h-1zM22 5h1v1h-1zM28 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM25 6h1v1h-1zM26 6h1v1h-1zM27 6h1v1h-1zM28 6h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM13 7h1v1h-1zM18 7h1v1h-1zM1 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM12 8h1v1h-1zM13 8h1v1h-1zM17 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM25 8h1v1h-1zM27 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM5 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM15 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM23 9h1v1h-1zM24 9h1v1h-1zM25 9h1v1h-1zM26 9h1v1h-1zM27 9h1v1h-1zM1 10h1v1h-1zM3 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM13 10h1v1h-1zM14 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM21 10h1v1h-1zM22 10h1v1h-1zM23 10h1v1h-1zM26 10h1v1h-1zM2 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM25 11h1v1h-1zM28 11h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM14 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM25 12h1v1h-1zM27 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM10 13h1v1h-1zM12 13h1v1h-1zM15 13h1v1h-1zM22 13h1v1h-1zM24 13h1v1h-1zM26 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM0 14h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM10 14h1v1h-1zM12 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM25 14h1v1h-1zM28 14h1v1h-1zM0 15h1v1h-1zM4 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM15 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM24 15h1v1h-1zM25 15h1v1h-1zM26 15h1v1h-1zM27 15h1v1h-1zM28 15h1v1h-1zM2 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM9 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM20 16h1v1h-1zM23 16h1v1h-1zM25 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM0 17h1v1h-1zM4 17h1v1h-1zM5 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM24 17h1v1h-1zM26 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM3 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM7 18h1v1h-1zM8 18h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM23 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM28 18h1v1h-1zM0 19h1v1h-1zM1 19h1v1h-1zM3 19h1v1h-1zM8 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM24 19h1v1h-1zM26 19h1v1h-1zM27 19h1v1h-1zM28 19h1v1h-1zM0 20h1v1h-1zM1 20h1v1h-1zM2 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM7 20h1v1h-1zM8 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM26 20h1v1h-1zM8 21h1v1h-1zM10 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM20 21h1v1h-1zM24 21h1v1h-1zM25 21h1v1h-1zM26 21h1v1h-1zM0 22h1v1h-1zM1 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM19 22h1v1h-1zM20 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM26 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM17 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM27 23h1v1h-1zM0 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM14 24h1v1h-1zM16 24h1v1h-1zM18 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM21 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1zM28 24h1v1h-1zM0 25h1v1h-1zM2 25h1v1h-1zM3 25h1v1h-1zM4 25h1v1h-1zM6 25h1v1h-1zM8 25h1v1h-1zM9 25h1v1h-1zM10 25h1v1h-1zM11 25h1v1h-1zM12 25h1v1h-1zM13 25h1v1h-1zM17 25h1v1h-1zM18 25h1v1h-1zM23 25h1v1h-1zM26 25h1v1h-1zM27 25h1v1h-1zM0 26h1v1h-1zM2 26h1v1h-1zM3 26h1v1h-1zM4 26h1v1h-1zM6 26h1v1h-1zM9 26h1v1h-1zM13 26h1v1h-1zM14 26h1v1h-1zM15 26h1v1h-1zM18 26h1v1h-1zM20 26h1v1h-1zM21 26h1v1h-1zM23 26h1v1h-1zM24 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h1v1h-1zM10 27h1v1h-1zM13 27h1v1h-1zM14 27h1v1h-1zM15 27h1v1h-1zM21 27h1v1h-1zM24 27h1v1h-1zM25 27h1v1h-1zM26 27h1v1h-1zM28 27h1v1h-1zM0 28h1v1h-1zM1 28h1v1h-1zM2 28h1v1h-1zM3 28h1v1h-1zM4 28h1v1h-1zM5 28h1v1h-1zM6 28h1v1h-1zM9 28h1v1h-1zM12 28h1v1h-1zM14 28h1v1h-1zM18 28h1v1h-1zM20 28h1v1h-1zM22 28h1v1h-1zM23 28h1v1h-1zM24 28h1v1h-1z"}, LIVE_URL = 'https://dvn019.github.io/budge/';
@@ -1047,12 +1007,12 @@
     var next = s.nextStart ? (b.rhythm === 'month' ? L.shortDate(s.nextStart).replace(/^\w+ /, '') : L.weekdayName(s.nextStart)) : '';
     var once = b.kind === 'once', lw = once ? 'This budget' : 'Last ' + u;
     var title = !showReview ? '' : last.over > 0 ? lw + (once ? ' went ' : ' you went ') + N(last.over) + ' over'
-      : last.saved > 0 ? (once ? 'This budget left ' : lw + ' you saved ') + N(last.saved) : lw + ' you spent it all';
+      : last.saved > 0 ? (once ? 'This budget left ' : lw + ' you had ') + N(last.saved) + (once ? '' : ' left over') : lw + ' you spent it all';
     var nudge = nudgeFor(st, b, s);
     function act() {
       if (nudge.kind === 'cover') A.cover(b.id, nudge.id);
       else if (nudge.kind === 'view') A.open({ type: 'cat', id: nudge.id, unit: s.unit, offset: 0 });
-      else { A.commit(function (x) { var bb = L.findBudget(x, b.id); L.saveFromPot(x, bb, s.start, nudge.id, nudge.amt); }); A.sfx('chime'); A.say(N(nudge.amt) + ' moved to savings'); }
+      else { A.commit(function (x) { var bb = L.findBudget(x, b.id); L.saveFromPot(x, bb, s.start, nudge.id, nudge.amt); }); A.sfx('chime'); A.say(N(nudge.amt) + ' set aside'); }
     }
     return html`<div class="pad tabpad">
       <div class="home-top">
@@ -1067,12 +1027,12 @@
         <span class="b-ic"><${Icon} n=${last.over > 0 ? 'warn' : 'piggy'} size=${20} color=${last.over > 0 ? 'var(--critical)' : 'var(--emerald-deep)'} /></span>
         <div class="b-text">
           <div class="t-label">${title}</div>
-          <div class="t-s muted">${last.saved > 0 ? 'It’s now in your savings.' : once ? 'This budget has ended.' : 'This ' + u + ' starts fresh.'}</div>
+          <div class="t-s muted">${last.saved > 0 ? 'It’s added to your total left over.' : once ? 'This budget has ended.' : 'This ' + u + ' starts fresh.'}</div>
           <div class="b-actions"><button class="btn btn-dark btn-sm" onClick=${function () { A.tab('insights'); }}>See review</button></div>
         </div>
         <button class="icon-btn" aria-label="Dismiss" style=${{ width: '32px', height: '32px' }} onClick=${function () { A.commitB(b.id, function (x) { x.bannerSeen = last.start; }); }}><${Icon} n="x" size=${16} /></button>
       </div>`}
-      <${InstallTip} st=${st} A=${A} />
+      ${!showReview && html`<${InstallTip} st=${st} A=${A} />`}
       <${TankCard} s=${s} b=${b} next=${next} />
       ${nudge && html`<div class="nudge">
         <${Icon} n="sparkle" size=${20} color="#4ADE80" />
@@ -1084,10 +1044,6 @@
       <div class="pots-card">
         <div class="pots-head"><div class="t-title">This ${u}’s allocations</div><button class="pots-edit" onClick=${function () { A.open({ type: 'split' }); }}>Edit</button></div>
         ${s.pots.map(function (pt) { return html`<${PotRow} key=${pt.id} pot=${pt} onClick=${function () { A.open({ type: 'cat', id: pt.id, unit: s.unit, offset: 0 }); }} />`; })}
-        ${s.work > 0 && html`<button class="row" onClick=${function () { A.open({ type: 'cat', id: 'work', unit: s.unit, offset: 0 }); }}>
-          <${CatIcon} id="work" size=${40} />
-          <div class="grow"><div class="name">Work costs</div><div class="meta">Not in your budget</div></div>
-          <div class="amt num">${N(s.work)}</div></button>`}
       </div>
       ${s.phase === 'live' && html`<div class="home-today">
         <div class="sec-head"><div class="t-title">Today</div>
@@ -1107,10 +1063,9 @@
     var st = p.st, b = p.b, A = p.A, view = p.view, once = b.kind === 'once';
     var unit = once ? 'once' : (view.unit || b.rhythm);
     var v = L.rangeView(st, b, unit, view.offset, p.now);
-    var f = useState('all'), filter = f[0], setFilter = f[1];
     var ids = Object.keys(v.byCat).filter(function (k) { return v.byCat[k] > 0; }).sort(function (x, y) { return v.byCat[y] - v.byCat[x]; });
     var scale = Math.max(v.budget, v.spent) || 1, u = unitWord(unit), today = L.dkey(p.now);
-    var list = v.entries.filter(function (e) { return filter === 'all' || (filter === 'out' && L.personalOut(e)) || (filter === 'work' && e.work); });
+    var list = v.entries.filter(L.personalOut);
     function go(d) { p.setView({ unit: unit, offset: view.offset + d }); }
     return html`<div class="pad tabpad">
       <${BudgetBar} b=${b} A=${A} />
@@ -1142,7 +1097,6 @@
       </div>`}
       <div>
         <div class="sec-head" style=${{ alignItems: 'center', marginBottom: '8px' }}><div class="t-title">Purchases</div>
-          ${v.work > 0 && html`<${Seg} value=${filter} onChange=${setFilter} options=${[{ v: 'all', label: 'All' }, { v: 'out', label: 'Personal' }, { v: 'work', label: 'Work' }]} />`}
         </div>
         ${list.length ? groupByDay(list).map(function (g) {
           var tot = g.items.filter(L.personalOut).reduce(function (a, e) { return a + e.amount; }, 0);
@@ -1164,7 +1118,6 @@
   }
   function Insights(p) {
     var st = p.st, b = p.b, A = p.A, now = p.now, s = L.status(st, b, now), u = unitWord(s.unit), once = b.kind === 'once';
-    var tipIdx = useState(0), ti = tipIdx[0], setTi = tipIdx[1];
     var hist = b.history.filter(function (h) { return h.active; });
     var p0, r, label, isCurrent = false, idx = null;
     if (!hist.length) {
@@ -1179,7 +1132,6 @@
       r = L.review(st, b, p0, isLast ? 'last ' + u : 'that ' + u);
       label = (once ? 'Final review' : isLast ? 'Last ' + u : 'Past ' + u) + ' · ' + L.rangeLabel(p0.start, p0.end, once ? 'week' : p0.rhythm);
     }
-    var tips = r.empty ? [] : r.tips;
     function act(sg, how) {
       A.commitB(b.id, function (x) { if (how === 'apply') L.applySuggestion(x, sg); else x.done[sg.key] = 'skipped'; });
       if (how === 'apply') A.say(sg.kind === 'treat' ? 'Treats allocation is now ' + N(sg.amount) : 'Moved ' + N(sg.amount));
@@ -1199,7 +1151,7 @@
         <div class="t-s muted" style=${{ marginTop: '4px' }}>${label}</div>
         ${!isCurrent && html`<div style=${{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap' }}>
           <span class="t-s num">Spent <b>${N(p0.spent)}</b> of ${N(p0.budget)}</span>
-          ${p0.over > 0 ? html`<span class="tag tag-bad">${N(p0.over)} over</span>` : p0.saved > 0 ? html`<span class="tag tag-good">${N(p0.saved)} saved</span>` : html`<span class="tag tag-none">On budget</span>`}
+          ${p0.over > 0 ? html`<span class="tag tag-bad">${N(p0.over)} over</span>` : p0.saved > 0 ? html`<span class="tag tag-good">${N(p0.saved)} left over</span>` : html`<span class="tag tag-none">On budget</span>`}
         </div>`}
       </div>
       ${isCurrent && !once && html`<div class="banner plain">
@@ -1211,7 +1163,7 @@
         : html`<div class="card">
           <div style=${{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <${CatIcon} id=${r.topId} size=${40} />
-            <div style=${{ minWidth: 0 }}><div class="t-title" style=${{ fontWeight: 700 }}>${r.headline}</div><div class="t-cap muted num">${r.sub}</div></div>
+            <div style=${{ minWidth: 0 }}><div class="t-title">${r.headline}</div><div class="t-cap muted num">${r.sub}</div></div>
           </div>
           <${Chart} bars=${r.bars} color="var(--ink-2)" />
         </div>`}
@@ -1224,7 +1176,7 @@
         }
         return html`<div class="sugg" key=${sg.key}>
           <${Icon} n="sparkle" size=${18} color="var(--emerald-deep)" />
-          <div class="t-title" style=${{ fontWeight: 700 }}>${sg.title}</div>
+          <div class="t-title">${sg.title}</div>
           <div class="t-s muted">${sg.detail}</div>
           <div class="btn-row">
             <button class="btn btn-primary" onClick=${function () { A.sfx('chime'); act(sg, 'apply'); }}>Apply</button>
@@ -1232,24 +1184,10 @@
           </div>
         </div>`;
       })}
-      ${tips.length > 0 && html`<div class="tip">
-        <span class="b-ic" style=${{ background: 'var(--warning-soft)' }}><${Icon} n="tip" size=${20} color="var(--warning-deep)" /></span>
-        <div style=${{ flex: 1, minWidth: 0 }}>
-          <div class="t-cap muted" style=${{ fontWeight: 600 }}>Tip</div>
-          <div class="t-s" style=${{ marginTop: '2px' }}>${tips[ti % tips.length]}</div>
-          ${tips.length > 1 && html`<button class="link" style=${{ marginTop: '6px' }} onClick=${function () { setTi(ti + 1); }}>Next tip</button>`}
-        </div>
-      </div>`}
-      ${(function () { var m = L.monthView(st, now, 0), mx = Math.max(m.moneyIn, m.spent) || 1; return html`<button class="card tap month-card" onClick=${function () { A.open({ type: 'month', offset: 0 }); }}>
-        <div class="sec-head"><span class="t-label">${m.short}: money in and out</span><span class="link" style=${{ padding: 0 }}>Details</span></div>
-        <div class="io-row"><span class="t-cap muted">In</span><div class="io-bar"><i style=${{ width: m.moneyIn / mx * 100 + '%', background: 'var(--emerald)' }}></i></div><span class="t-s num">${L.short(m.moneyIn)}</span></div>
-        <div class="io-row"><span class="t-cap muted">Out</span><div class="io-bar"><i style=${{ width: m.spent / mx * 100 + '%', background: 'var(--ink-2)' }}></i></div><span class="t-s num">${L.short(m.spent)}</span></div>
-        <div class=${cx('t-s', !m.moneyIn && !m.spent ? 'muted' : m.kept < 0 ? 'neg' : 'pos')} style=${{ fontWeight: 600 }}>${!m.moneyIn && !m.spent ? 'Nothing in or out yet' : m.kept >= 0 ? 'You kept ' + N(m.kept) : 'You spent ' + N(-m.kept) + ' more than came in'}</div>
-      </button>`; })()}
-      ${savedHere > 0 && html`<div class="card" style=${{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      ${(st.savings || 0) > 0 && html`<div class="card" style=${{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <span class="b-ic" style=${{ background: 'var(--emerald-soft)' }}><${Icon} n="piggy" size=${20} color="var(--emerald-deep)" /></span>
-        <div style=${{ flex: 1 }}><div class="t-label">Saved from this budget</div><div class="t-cap muted">All savings: ${N(st.savings || 0)}</div></div>
-        <div class="t-title num">${N(savedHere)}</div>
+        <div style=${{ flex: 1 }}><div class="t-label">Total left over</div><div class="t-cap muted">Money you didn’t spend, plus what you set aside</div></div>
+        <div class="t-title num">${N(st.savings || 0)}</div>
       </div>`}
       ${past.length > 0 && html`<div>
         <div class="t-title" style=${{ marginBottom: '4px' }}>Past ${u}s</div>
@@ -1258,7 +1196,7 @@
           return html`<button class="row" key=${h.start} disabled=${!h.active} onClick=${function () { if (h.active) { p.setIdx(i); var sc = document.querySelector('.screen'); if (sc) sc.scrollTop = 0; } }}>
             <div class="grow"><div class="name">${L.rangeLabel(h.start, h.end, h.rhythm)}</div>
               <div class="meta num">${h.active ? N(h.spent) + ' of ' + N(h.budget) : 'No records'}</div></div>
-            ${!h.active ? html`<span class="tag tag-none">Skipped</span>` : h.over > 0 ? html`<span class="tag tag-bad">${N(h.over)} over</span>` : h.saved > 0 ? html`<span class="tag tag-good">${N(h.saved)} saved</span>` : html`<span class="tag tag-none">On budget</span>`}
+            ${!h.active ? html`<span class="tag tag-none">Skipped</span>` : h.over > 0 ? html`<span class="tag tag-bad">${N(h.over)} over</span>` : h.saved > 0 ? html`<span class="tag tag-good">${N(h.saved)} left over</span>` : html`<span class="tag tag-none">On budget</span>`}
             ${h.active && html`<${Icon} n="right" size=${16} color="var(--faint)" />`}
           </button>`;
         })}</div>
@@ -1373,7 +1311,6 @@
   }
   function BudgetSettings(p) {
     var st = p.st, b = p.b, A = p.A, now = p.now, total = L.totalBudget(b.cats);
-    var nm = useState(st.name || ''), name = nm[0], setName = nm[1];
     var pots = L.allCats().filter(function (c) { return b.cats[c.id] > 0; }).length;
     function setRhythm(r) {
       if (r === b.rhythm) return;
@@ -1395,26 +1332,21 @@
           <${Toggle} label="Daily reminder" on=${st.reminder.on} onChange=${function (v) { A.commit(function (x) { x.reminder.on = v; }); }} /></div>
         ${st.reminder.on && html`<label class="row" for="set-time"><div class="grow name">Time</div>
           <input id="set-time" type="time" class="time-in" value=${st.reminder.time} onChange=${function (e) { var v = e.target.value; if (v) A.commit(function (x) { x.reminder.time = v; }); }} /></label>`}
-        <div class="row"><div class="grow"><div class="name">Nearly-empty warning</div><div class="meta">When an allocation is 80% spent</div></div>
-          <${Toggle} label="Nearly-empty warning" on=${st.treatWarn !== false} onChange=${function (v) { A.commit(function (x) { x.treatWarn = v; }); }} /></div>
+        <div class="row"><div class="grow"><div class="name">Nearly used up warning</div><div class="meta">When an allocation is 80% spent</div></div>
+          <${Toggle} label="Nearly used up warning" on=${st.treatWarn !== false} onChange=${function (v) { A.commit(function (x) { x.treatWarn = v; }); }} /></div>
         <div class="row"><div class="grow"><div class="name">Sounds and vibration</div><div class="meta">When you log and save</div></div>
           <${Toggle} label="Sounds and vibration" on=${st.sound !== false} onChange=${function (v) { A.commit(function (x) { x.sound = v; }); if (v) setTimeout(function () { SFX.enabled = true; SFX.play('check'); }, 30); }} /></div>
-      </div></div>
-      <div><div class="group-title">You</div><div class="group">
-        <label class="row" for="set-name"><div class="grow name">Name</div>
-          <input id="set-name" class="name-in" placeholder="Add your name" value=${name} maxlength="30"
-            onInput=${function (e) { setName(e.target.value); }} onBlur=${function () { A.commit(function (x) { x.name = name.trim(); }); }} /></label>
       </div></div>
       ${PWA && html`<${PwaSettings} st=${st} A=${A} />`}
       ${!PWA && html`<div><div class="group-title">Try the prototype</div><div class="group">
         <div class="row"><div class="grow"><div class="name">App date</div><div class="meta">${st.offset ? 'Moved ' + st.offset + ' day' + (st.offset > 1 ? 's' : '') + ' ahead' : 'Today'}</div></div><div class="amt">${L.shortDate(L.dkey(now))}</div></div>
         <button class="row" onClick=${A.notify}><div class="grow name">Show the daily reminder</div><${Icon} n="bell" size=${18} color="var(--muted)" /></button>
         <button class="row" onClick=${function () { A.jump(1); }}><div class="grow name">Jump ahead 1 day</div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
-        <button class="row" onClick=${A.nextWeek}><div class="grow"><div class="name">Jump to next week</div><div class="meta">What’s left moves to savings</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+        <button class="row" onClick=${A.nextWeek}><div class="grow"><div class="name">Jump to next week</div><div class="meta">What’s left is added to your total left over</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
         <${Confirm} label="Load the sample week" question="This replaces your data with a sample week." yes="Load sample" onYes=${A.loadSample} />
         <${Confirm} label="Start over" danger=${true} meta="Delete your budget and every record" question="Delete everything and start again?" yes="Delete all" onYes=${A.startOver} />
       </div></div>`}
-      <div class="t-cap muted" style=${{ textAlign: 'center' }}>${PWA ? 'Budge · Your data stays on this phone' : 'Budge prototype · ' + (p.mode === 'db' ? 'Saved to your account' : 'Saved on this device')}</div>
+      <div class="t-cap muted" style=${{ textAlign: 'center' }}>${PWA ? 'Budge ' + (CFG.release || '') + (CFG.released ? ' · Updated ' + CFG.released : '') : 'Budge prototype ' + (window.BUDGE_RELEASE || '') + ' · ' + (p.mode === 'db' ? 'Saved to your account' : 'Saved on this device')}<br />${PWA ? 'Your data stays on this phone' : ''}</div>
     </div>`;
   }
   // ================= layers =================
@@ -1454,7 +1386,7 @@
     var rest = L.allCats().filter(function (x) { return open.indexOf(x.id) < 0; });
     return html`<div style=${{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div class="card total-card"><span class="t-s muted">Total</span>
-        <span><span class="t-title num" style=${{ fontWeight: 800, fontSize: '22px' }}>${N(total)}</span><span class="t-s muted"> ${perUnit(p.unit)}</span></span></div>
+        <span><span class="t-title num" style=${{ fontWeight: 600, fontSize: '22px' }}>${N(total)}</span><span class="t-s muted"> ${perUnit(p.unit)}</span></span></div>
       <div class="list">
         ${open.map(function (id) {
           var cc = L.cat(id);
@@ -1557,7 +1489,7 @@
       var quick = kind === 'month' ? [150000, 200000, 300000, 500000] : [30000, 50000, 80000, 100000];
       body = html`<div class="lb lb-amount">
         <div class="pad"><h1 class="h1">How much can you spend each ${u}?</h1>
-          <p class="t-s muted" style=${{ margin: '8px 0 0' }}>Leave out rent and savings. You can change it any time.</p></div>
+          <p class="t-s muted" style=${{ margin: '8px 0 0' }}>Leave out rent and money you’re putting away. You can change it any time.</p></div>
         <div class="amount-wrap pad"><${BigAmount} value=${total} />
           <div class="quick">${quick.map(function (q) { return html`<button class=${cx('chip', n === q && 'on')} onClick=${function () { setTotal(String(q)); }}>${L.short(q)}</button>`; })}</div>
         </div>
@@ -1584,26 +1516,13 @@
     return html`<div class="layer up">${head}${body}<div class="lf pad">${foot}</div></div>`;
   }
   // ================= add flow =================
-  function CatGrid(p) {
-    var pots = {};
-    (p.pots || []).forEach(function (x) { pots[x.id] = x; });
-    return html`<div class="grid4" role="radiogroup" aria-label="Allocation">
-      ${L.allCats().map(function (c) {
-        var pt = pots[c.id], line = null;
-        if (pt && pt.state === 'over') line = html`<span class="tile-left neg">${L.short(-pt.left)} over</span>`;
-        else if (pt && pt.budget) line = html`<span class=${cx('tile-left', pt.state === 'near' && 'warn')}>${L.short(pt.left)} left</span>`;
-        return html`<button class=${cx('tile', p.value === c.id && 'on')} role="radio" aria-checked=${p.value === c.id} key=${c.id} onClick=${function () { p.onChange(c.id); }}>
-          <${CatIcon} id=${c.id} size=${40} /><span>${c.name}</span>${line}</button>`;
-      })}
-    </div>`;
-  }
   function DateChips(p) {
     var today = p.today, y = L.addDays(today, -1), v = p.value;
     var other = v !== today && v !== y;
     return html`<div class="field-row" role="radiogroup" aria-label="Date">
       <button class=${cx('chip', v === today && 'on')} onClick=${function () { p.onChange(today); }}>Today</button>
       <button class=${cx('chip', v === y && 'on')} onClick=${function () { p.onChange(y); }}>Yesterday</button>
-      <label class=${cx('chip date-chip', other && 'on')}><${Icon} n="calendar" size=${16} />${other ? L.shortDate(v) : 'Earlier'}
+      <label class=${cx('chip date-chip', other && 'on')}><${Icon} n="calendar" size=${16} />${other ? L.shortDate(v) : 'Pick a date'}
         <input type="date" aria-label="Pick a date" max=${today} value=${v} onChange=${function (e) { if (e.target.value && e.target.value <= today) p.onChange(e.target.value); }} /></label>
     </div>`;
   }
@@ -1615,105 +1534,123 @@
   }
   function liveBudgets(st, today) { var m = L.mainBudget(st); return m && L.phaseOf(m, today) === 'live' ? [m] : []; }
 
+  // Logging a purchase: one question per screen. Amount → allocation → check and save.
+  function AllocPick(p) {
+    var pots = {}; (p.pots || []).forEach(function (x) { pots[x.id] = x; });
+    var cats = L.allCats(), set = cats.filter(function (c) { return pots[c.id] && pots[c.id].budget > 0; }), rest = cats.filter(function (c) { return !(pots[c.id] && pots[c.id].budget > 0); });
+    function tile(c) {
+      var pt = pots[c.id], line;
+      if (pt && pt.budget > 0) line = pt.left < 0 ? html`<span class="ap-left neg num">${N(-pt.left)} over</span>` : html`<span class=${cx('ap-left num', pt.state === 'near' && 'warn')}>${N(pt.left)} left</span>`;
+      else line = html`<span class="ap-left muted">Not allocated</span>`;
+      return html`<button class=${cx('ap-tile', p.value === c.id && 'on')} role="radio" aria-checked=${p.value === c.id} key=${c.id} onClick=${function () { p.onChange(c.id); }}>
+        <${CatIcon} id=${c.id} size=${40} /><span class="ap-name">${c.name}</span>${line}</button>`;
+    }
+    return html`<div role="radiogroup" aria-label="Allocation">
+      <div class="ap-grid">${set.map(tile)}</div>
+      ${rest.length > 0 && html`<div class="t-cap muted ap-sub">Not in your budget</div><div class="ap-grid">${rest.map(tile)}</div>`}
+    </div>`;
+  }
   function AddFlow(p) {
     var st = p.st, A = p.A, now = p.now, today = L.dkey(now), pre = p.preset || {};
-    var live = liveBudgets(st, today);
-    var preOk = pre.bid && live.some(function (b) { return b.id === pre.bid; });
-    var defBid = preOk ? pre.bid : (live.some(function (b) { return b.id === st.lastBid; }) ? st.lastBid : live[0] ? live[0].id : null);
-    var sStep = useState(pre.step || 'amount'), step = sStep[0], setStep = sStep[1];
-    var sType = useState(pre.kind || (live.length ? 'out' : 'in')), type = sType[0], setType = sType[1];
+    var b = L.mainBudget(st), s = b ? L.status(st, b, now) : null;
+    var sStep = useState('amount'), step = sStep[0], setStep = sStep[1];
     var sAmt = useState(pre.amount ? String(pre.amount) : ''), amt = sAmt[0], setAmt = sAmt[1];
     var sCat = useState(pre.cat || null), catId = sCat[0], setCat = sCat[1];
-    var sBid = useState(defBid), bid = sBid[0], setBid = sBid[1];
     var sNote = useState(''), note = sNote[0], setNote = sNote[1];
-    var sWork = useState(false), work = sWork[0], setWork = sWork[1];
-    var sSrc = useState(null), source = sSrc[0], setSource = sSrc[1];
     var sDay = useState(today), day = sDay[0], setDay = sDay[1];
     var sSaved = useState(null), saved = sSaved[0], setSaved = sSaved[1];
-    var n = +amt || 0, b = bid ? L.findBudget(st, bid) : null;
-    var s = b ? L.status(st, b, now) : null;
+    var n = +amt || 0, u = s ? unitWord(s.unit) : 'week', per = ' this ' + u;
+    var order = pre.cat ? ['amount', 'check'] : ['amount', 'cat', 'check'], at = order.indexOf(step);
     function onKey(k) { setAmt(applyKey(amt, k)); }
-    useKeys(onKey, function () { if (n > 0) setStep('details'); }, step === 'amount');
-    function reset() { setStep('amount'); setAmt(''); setCat(null); setNote(''); setWork(false); setSource(null); setDay(today); setSaved(null); }
+    function afterAmount() { if (n > 0) setStep(pre.cat ? 'check' : 'cat'); }
+    useKeys(onKey, afterAmount, step === 'amount');
+    function back() { if (at <= 0) A.close(); else setStep(order[at - 1]); }
+    function reset() { setStep('amount'); setAmt(''); setCat(pre.cat || null); setNote(''); setDay(today); setSaved(null); }
     function save() {
-      var e = { id: L.uid(), type: type, amount: n, note: note.trim(), ts: tsFor(day, today, now) };
-      if (type === 'out') { e.cat = catId || 'other'; e.work = work; e.bid = bid; } else { e.cat = 'in'; e.work = false; e.source = source || 'Other'; e.bid = null; }
-      A.commit(function (x) { x.entries.push(e); if (type === 'out') x.lastBid = bid; }); stat(type === 'out' ? 'log-purchase' : 'log-money-in', true);
-      if (type === 'in') A.sfx('chime');
-      else {
-        var x2 = clone(st); x2.entries.push(e); var b2 = L.findBudget(x2, bid), s2 = b2 && L.status(x2, b2, now);
-        var p2 = s2 && !e.work ? s2.pots.filter(function (q) { return q.id === e.cat; })[0] : null;
-        A.sfx(p2 && p2.state === 'over' ? 'over' : p2 && p2.state === 'near' ? 'warn' : 'pour');
-      }
+      var e = { id: L.uid(), type: 'out', amount: n, note: note.trim(), ts: tsFor(day, today, now), cat: catId || 'other', work: false, bid: b.id };
+      A.commit(function (x) { x.entries.push(e); x.lastBid = b.id; }); stat('log-purchase', true);
+      var x2 = clone(st); x2.entries.push(e); var s2 = L.status(x2, L.findBudget(x2, b.id), now);
+      var p2 = s2.pots.filter(function (q) { return q.id === e.cat; })[0];
+      A.sfx(p2 && p2.state === 'over' ? 'over' : p2 && p2.state === 'near' ? 'warn' : 'pour');
       setSaved(e); setStep('saved');
     }
+    var head = html`<div class="lh pad">
+      <${Back} icon=${at <= 0 ? 'x' : 'back'} label=${at <= 0 ? 'Close' : 'Back'} onClick=${back} />
+      <div class="steps" aria-label=${'Step ' + (at + 1) + ' of ' + order.length}>${order.map(function (x, i) { return html`<i class=${i <= at ? 'on' : ''}></i>`; })}</div>
+      <span style=${{ width: '40px' }}></span></div>`;
+
     if (step === 'saved' && saved) {
-      var e = saved, streak = L.streak(st, now), body, extra = null;
-      var u = s ? unitWord(s.unit) : 'week', period = b && b.kind === 'once' ? '' : ' this ' + u;
-      var inPeriod = s && L.entryDay(e) >= s.start && L.entryDay(e) <= s.end;
-      if (e.type === 'in') {
-        body = html`<div class="d-xl num fit pos">+${N(e.amount)}</div><div class="t-s muted">Money in this month: ${N(L.monthSummary(st, now).moneyIn)}</div>`;
-      } else if (e.work) {
-        body = html`<div class="d-xl num fit">${N(e.amount)}</div><div class="t-s muted">Work cost. Not counted in ${b.name}.</div>`;
-      } else {
-        var pt = s.pots.filter(function (x) { return x.id === e.cat; })[0] || { id: e.cat, budget: 0, spent: 0, left: 0, ratio: 0, state: 'none' };
-        var cname = L.cat(e.cat).name;
-        if (!inPeriod) {
-          body = html`<div class="d-xl num fit">${N(e.amount)}</div><div class="t-s muted">Logged on ${L.shortDate(L.entryDay(e))}</div>`;
-        } else if (pt.state === 'none') {
-          body = html`<div class="d-xl num fit">${N(Math.max(0, s.left))}</div><div class="t-s muted">left${period}${live.length > 1 ? ' in ' + b.name : ''}</div>
-            <div class="t-cap muted" style=${{ marginTop: '6px' }}>${cname} has no allocation, so it came out of your total.</div>`;
-        } else {
-          var over = pt.state === 'over', color = over ? 'var(--critical)' : pt.state === 'near' ? 'var(--warning)' : 'var(--ink-2)';
-          body = html`
-            <div class=${cx('d-xl num fit', over && 'neg')}>${N(Math.abs(pt.left))}</div>
-            <div class="t-s muted">${over ? 'over in ' + cname : 'left in ' + cname}</div>
-            <div class="saved-pot"><${Bar} ratio=${pt.ratio} color=${color} /><div class="t-cap muted num">${N(pt.spent)} of ${N(pt.budget)}${period}</div></div>
-            ${pt.state === 'near' && html`<div class="t-cap warn">Almost empty</div>`}`;
-          if (over) extra = html`<button class="btn btn-secondary" style=${{ marginTop: '18px' }} onClick=${function () { A.cover(b.id, pt.id); }}>Cover it from another allocation</button>`;
-        }
-        if (inPeriod) extra = html`${extra}<div class="card saved-total">
-          <span class="t-s muted">${s.left < 0 ? 'Over budget' : 'Left' + period}${live.length > 1 ? ' · ' + b.name : ''}</span>
-          <span class=${cx('t-label num', s.left < 0 && 'neg')}>${N(Math.abs(s.left))}</span></div>`;
+      var e = saved, streak = L.streak(st, now), inPeriod = s && L.entryDay(e) >= s.start && L.entryDay(e) <= s.end;
+      var pt = s.pots.filter(function (x) { return x.id === e.cat; })[0] || { id: e.cat, budget: 0, spent: 0, left: 0, ratio: 0, state: 'none' };
+      var cname = L.cat(e.cat).name, body, extra = null;
+      if (!inPeriod) body = html`<div class="d-xl num fit">${N(e.amount)}</div><div class="t-s muted">Logged for ${L.shortDate(L.entryDay(e))}</div>`;
+      else if (!pt.budget) body = html`<div class="d-xl num fit">${N(Math.max(0, s.left))}</div><div class="t-s muted">left${per}</div>
+        <div class="t-cap muted" style=${{ marginTop: '6px' }}>${cname} isn’t in your budget, so it came out of your total.</div>`;
+      else {
+        var over = pt.state === 'over', color = over ? 'var(--critical)' : pt.state === 'near' ? 'var(--warning)' : 'var(--ink-2)';
+        body = html`<div class=${cx('d-xl num fit', over && 'neg')}>${N(Math.abs(pt.left))}</div>
+          <div class="t-s muted">${over ? 'over in ' + cname : 'left in ' + cname}</div>
+          <div class="saved-pot"><${Bar} ratio=${pt.ratio} color=${color} /><div class="t-cap muted num">${N(pt.spent)} of ${N(pt.budget)}${per}</div></div>`;
+        if (over) extra = html`<button class="btn btn-secondary" style=${{ marginTop: '18px' }} onClick=${function () { A.cover(b.id, pt.id); }}>Move money from another allocation</button>`;
       }
+      if (inPeriod) extra = html`${extra}<div class="card saved-total"><span class="t-s muted">${s.left < 0 ? 'Over budget' : 'Left' + per}</span>
+        <span class=${cx('t-label num', s.left < 0 && 'neg')}>${N(Math.abs(s.left))}</span></div>`;
       return html`<div class="layer up">
         <div class="lh pad"><span style=${{ flex: 1 }}></span><${Back} icon="x" label="Close" onClick=${A.close} /></div>
         <div class="saved pad">
           <span class="check-big"><${Icon} n="check" size=${34} /></span>
-          <div class="t-label" style=${{ marginBottom: '4px' }}>${e.type === 'in' ? 'Money in saved' : 'Saved'}</div>
+          <div class="t-label" style=${{ marginBottom: '4px' }}>Logged</div>
           ${body}${extra}
-          ${streak > 0 && html`<div class="t-s" style=${{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '16px', fontWeight: 600 }}><${Icon} n="fire" size=${16} color="var(--warning)" />${streak}-day streak</div>`}
+          ${streak > 0 && html`<div class="t-s streak-line"><${Icon} n="fire" size=${16} color="var(--warning)" />${streak}-day streak</div>`}
         </div>
-        <div class="lf pad"><button class="btn btn-primary" onClick=${A.close}>Done</button><button class="btn btn-text" onClick=${reset}>Add another</button></div>
+        <div class="lf pad"><button class="btn btn-primary" onClick=${A.close}>Done</button><button class="btn btn-text" onClick=${reset}>Log another</button></div>
       </div>`;
     }
-    if (step === 'details') {
-      return html`<div class="layer up" style=${{ animation: 'none' }}>
-        <div class="lh pad"><${Back} onClick=${function () { setStep('amount'); }} /><div class="lh-title num">${type === 'in' ? '+' : ''}${N(n)}</div></div>
-        <div class="lb pad">
-          ${type === 'out' ? html`<${CatGrid} value=${catId} onChange=${setCat} pots=${s ? s.pots : []} />` : html`<div>
-            <div class="t-label" style=${{ marginBottom: '10px' }}>Where’s it from?</div>
-            <div class="chips">${L.SOURCES.map(function (x) { return html`<button class=${cx('chip', source === x && 'on')} onClick=${function () { setSource(x); }}>${x}</button>`; })}</div></div>`}
-          <input id="add-note" class="field" placeholder="Note (optional)" aria-label="Note" maxlength="40" value=${note} onInput=${function (e2) { setNote(e2.target.value); }} />
-          <${DateChips} today=${today} value=${day} onChange=${setDay} />
-          ${type === 'out' && html`<${Seg} full=${true} value=${work ? 'work' : 'personal'} onChange=${function (v) { setWork(v === 'work'); }} options=${[{ v: 'personal', label: 'Personal' }, { v: 'work', label: 'Work' }]} />`}
-          ${type === 'out' && work && html`<div class="t-cap muted" style=${{ marginTop: '-12px' }}>Work costs don’t come out of your allocations.</div>`}
+
+    if (step === 'cat') {
+      return html`<div class="layer up" style=${{ animation: 'none' }}>${head}
+        <div class="lb pad step-in" key="cat">
+          <div><h1 class="h1">What was it for?</h1><p class="t-s muted step-sub num">${N(n)}</p></div>
+          <${AllocPick} value=${catId} pots=${s ? s.pots : []} onChange=${function (id) { setCat(id); A.sfx('tap'); setTimeout(function () { setStep('check'); }, 140); }} />
         </div>
-        <div class="lf pad"><button class="btn btn-primary" disabled=${type === 'out' && ((!catId && !work) || !bid)} onClick=${save}>Save</button></div>
       </div>`;
     }
-    var hint, tagB = live.length > 1 && b ? ' · ' + b.name : '', per = b && b.kind === 'once' ? '' : ' this ' + (s ? unitWord(s.unit) : 'week');
-    if (type === 'in') hint = html`<span class="hint muted">Money you received. Your allocations stay the same.</span>`;
-    else if (!s) hint = html`<span class="hint muted">No budget is running today</span>`;
-    else if (s.mode === 'over') hint = html`<span class="hint"><span class="dot" style=${{ background: 'var(--critical)' }}></span>${N(-s.left)} over${per}${tagB}</span>`;
-    else hint = html`<span class="hint"><span class="dot" style=${{ background: s.mode === 'low' ? 'var(--warning)' : 'var(--emerald)' }}></span>${N(s.left)} left${per}${tagB}</span>`;
-    return html`<div class="layer up">
-      <div class="lh pad"><${Back} icon="x" label="Close" onClick=${A.close} />
-        <div class="lh-mid"><${Seg} value=${type} onChange=${setType} options=${[{ v: 'out', label: 'Spent' }, { v: 'in', label: 'Money in' }]} /></div>
-        <span style=${{ width: '40px' }}></span></div>
-      <div class="amount-wrap pad"><${BigAmount} value=${amt} prefix=${type === 'in' ? '+' : ''} />${hint}</div>
-      <div class="pad"><${Keypad} onKey=${onKey} /></div>
-      <div class="lf pad"><button class="btn btn-primary" disabled=${!n || (type === 'out' && !b)} onClick=${function () { setStep('details'); }}>Next</button></div>
+
+    if (step === 'check') {
+      var cid = catId || 'other', c = L.cat(cid), q = s.pots.filter(function (x) { return x.id === cid; })[0];
+      var inNow = day >= s.start && day <= s.end, has = q && q.budget > 0;
+      var before = has ? q.left : s.left, after = before - (inNow ? n : 0), label = has ? 'Left in ' + c.name.toLowerCase() : 'Left this ' + u;
+      return html`<div class="layer up" style=${{ animation: 'none' }}>${head}
+        <div class="lb pad step-in" key="check">
+          <h1 class="h1">Check and save</h1>
+          <div class="sum-card">
+            <div class="sum-top"><${CatIcon} id=${cid} size=${44} />
+              <div class="grow"><div class="t-label">${c.name}</div><div class="t-cap muted">${has ? 'Allocation' : 'Not in your budget'}</div></div>
+              <div class="sum-amt num">${N(n)}</div></div>
+            ${inNow && html`<div class="sum-change">
+              <span class="t-s muted">${label}</span>
+              <span class="num sum-from">${before < 0 ? N(-before) + ' over' : N(before)}</span>
+              <${Icon} n="right" size=${14} color="var(--faint)" />
+              <span class=${cx('num sum-to', after < 0 && 'neg')}>${after < 0 ? N(-after) + ' over' : N(after)}</span></div>`}
+          </div>
+          <label class="fld"><span class="t-label">What was it? <span class="muted fw-r">Optional</span></span>
+            <input id="add-note" class="field" placeholder=${'e.g. ' + (cid === 'treats' ? 'Shawarma' : cid === 'transport' ? 'Bolt to work' : cid === 'food' ? 'Rice and plantain' : 'Something')} maxlength="40" value=${note} onInput=${function (ev) { setNote(ev.target.value); }} /></label>
+          <div class="fld"><span class="t-label">When?</span><${DateChips} today=${today} value=${day} onChange=${setDay} /></div>
+        </div>
+        <div class="lf pad"><button class="btn btn-primary" onClick=${save}>Save</button></div>
+      </div>`;
+    }
+
+    var hint = !s ? html`<span class="hint muted">No budget is running today</span>`
+      : s.mode === 'over' ? html`<span class="hint"><span class="dot" style=${{ background: 'var(--critical)' }}></span>${N(-s.left)} over${per}</span>`
+      : html`<span class="hint"><span class="dot" style=${{ background: s.mode === 'low' ? 'var(--warning)' : 'var(--emerald)' }}></span>${N(s.left)} left${per}</span>`;
+    return html`<div class="layer up">${head}
+      <div class="lb lb-amount">
+        <div class="pad"><h1 class="h1">How much did you spend?</h1></div>
+        <div class="amount-wrap pad"><${BigAmount} value=${amt} />${hint}</div>
+        <div class="pad"><${Keypad} onKey=${onKey} /></div>
+      </div>
+      <div class="lf pad"><button class="btn btn-primary" disabled=${!n || !b} onClick=${afterAmount}>Continue</button></div>
     </div>`;
   }
   // ================= category detail, lists, edit =================
@@ -1728,7 +1665,7 @@
     var near = bud && spent >= 0.8 * bud && st.treatWarn !== false;
     var color = bud && spent > bud ? 'var(--critical)' : near ? 'var(--warning)' : 'var(--ink-2)';
     var current = v.isCurrent && !v.scaled;
-    var potLabel = once ? 'Allocation' : 'Allocation (' + perUnit(L.unitOf(b)) + ')';
+    var potLabel = once ? 'Allocation' : (L.unitOf(b) === 'month' ? 'Monthly allocation' : 'Weekly allocation');
     var pn = useState(c.name), pname = pn[0], setPname = pn[1];
     function renamePot() {
       var v = pname.trim();
@@ -1762,8 +1699,8 @@
         </div>
         ${current && bud > 0 && left < 0 && html`<div class="banner bad">
           <span class="b-ic"><${Icon} n="warn" size=${20} color="var(--critical)" /></span>
-          <div class="b-text"><div class="t-label">Cover the ${N(-left)}</div><div class="t-s muted">Move money in from an allocation that has some left.</div>
-            <div class="b-actions"><button class="btn btn-dark btn-sm" onClick=${function () { A.cover(b.id, id, true); }}>Cover it</button></div></div></div>`}
+          <div class="b-text"><div class="t-label">${N(-left)} over</div><div class="t-s muted">Move money in from an allocation that has some left.</div>
+            <div class="b-actions"><button class="btn btn-dark btn-sm" onClick=${function () { A.cover(b.id, id, true); }}>Move money</button></div></div></div>`}
         ${!isWork && html`<div class="group">
           ${editing ? html`<div class="confirm">
             <label class="t-s muted" for="cat-budget">${potLabel}</label>
@@ -1799,9 +1736,9 @@
       A.sfx('chime'); A.say('Moved ' + N(amt) + ' from ' + L.cat(d.id).name.toLowerCase()); A.back();
     }
     return html`<div class="layer">
-      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Cover ${name.toLowerCase()}</div></div>
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Move money to ${name.toLowerCase()}</div></div>
       <div class="lb pad">
-        ${!need ? html`<${Empty} icon="check" title=${name + ' is covered'} text="Nothing to move." />` : html`
+        ${!need ? html`<${Empty} icon="check" title=${name + ' isn’t over'} text="Nothing to move." />` : html`
           <div style=${{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <${CatIcon} id=${p.id} size=${48} />
             <div><div class="d-l num neg" style=${{ fontSize: '32px' }}>${N(need)} over</div><div class="t-s muted">${once ? 'Moves last for this budget.' : 'Moves only change this ' + unitWord(s.unit) + '. Next ' + unitWord(s.unit) + ' your allocations reset.'}</div></div>
@@ -1822,28 +1759,18 @@
   }
   function PurchaseList(p) {
     var st = p.st, A = p.A, b = p.b, today = L.dkey(p.now);
-    var f = useState('all'), filter = f[0], setFilter = f[1];
-    var income = !b, list, title, sub;
-    if (income) {
-      var m = L.monthSummary(st, p.now); list = m.incomeEntries; title = 'Money in'; sub = m.label;
-    } else {
-      var v = L.rangeView(st, b, p.unit || L.unitOf(b), p.offset || 0, p.now); title = 'All purchases'; sub = v.label;
-      list = v.entries.filter(function (e) { return filter === 'all' || (filter === 'out' && L.personalOut(e)) || (filter === 'work' && e.work); });
-    }
+    var v = L.rangeView(st, b, p.unit || L.unitOf(b), p.offset || 0, p.now);
+    var list = v.entries.filter(L.personalOut);
     return html`<div class="layer">
-      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">${title}</div><span class="t-s muted">${sub}</span></div>
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">All purchases</div><span class="t-s muted">${v.label}</span></div>
       <div class="lb pad">
-        ${!income && html`<div class="chips">${[['all', 'All'], ['out', 'Personal'], ['work', 'Work']].map(function (o) {
-          return html`<button class=${cx('chip', filter === o[0] && 'on')} onClick=${function () { setFilter(o[0]); }}>${o[1]}</button>`;
-        })}</div>`}
-        ${income && html`<div class="card total-card"><span class="t-s muted">Received this month</span><span class="t-title num pos">+${N(list.reduce(function (a, e) { return a + e.amount; }, 0))}</span></div>`}
         ${list.length ? groupByDay(list).map(function (g) {
-          var tot = g.items.filter(L.personalOut).reduce(function (a, e) { return a + e.amount; }, 0);
+          var tot = g.items.reduce(function (a, e) { return a + e.amount; }, 0);
           return html`<div key=${g.day}>
-            <div class="sec-head"><span class="t-cap muted" style=${{ fontWeight: 600 }}>${L.dayLabel(g.day, today)}</span>${tot ? html`<span class="t-cap muted num">${N(tot)}</span>` : null}</div>
+            <div class="sec-head"><span class="t-cap muted day-label">${L.dayLabel(g.day, today)}</span><span class="t-cap muted num">${N(tot)}</span></div>
             ${g.items.map(function (e) { return html`<${EntryRow} key=${e.id} e=${e} showCat=${true} onClick=${function () { A.open({ type: 'edit', id: e.id }); }} />`; })}
           </div>`;
-        }) : html`<${Empty} icon=${income ? 'in' : 'list'} title="Nothing here yet" text=${income ? 'Tap Add spending, then Money in, to record money you receive.' : 'No records for this period.'} />`}
+        }) : html`<${Empty} icon="list" title="Nothing here yet" text="No purchases for this period." />`}
       </div>
     </div>`;
   }
@@ -1855,18 +1782,16 @@
     var sCat = useState(orig ? orig.cat : null), catId = sCat[0], setCat = sCat[1];
     var sBid = useState(orig ? orig.bid : null), bid = sBid[0], setBid = sBid[1];
     var sNote = useState(orig ? orig.note || '' : ''), note = sNote[0], setNote = sNote[1];
-    var sWork = useState(orig ? !!orig.work : false), work = sWork[0], setWork = sWork[1];
-    var sSrc = useState(orig ? orig.source || null : null), source = sSrc[0], setSource = sSrc[1];
     var sDay = useState(orig ? L.entryDay(orig) : today), day = sDay[0], setDay = sDay[1];
     var cf = useState(false), confirming = cf[0], setConfirming = cf[1];
     if (!orig) return html`<div class="layer"><div class="lh pad"><${Back} onClick=${A.back} /></div><div class="lb pad"><${Empty} title="This record was deleted" /></div></div>`;
-    var n = +digits(amt) || 0, isIn = orig.type === 'in';
+    var n = +digits(amt) || 0, isIn = orig.type === 'in', b = L.mainBudget(st), sp = b ? L.status(st, b, p.now).pots : [];
     function save() {
       A.commit(function (x) {
         x.entries.forEach(function (e) {
           if (e.id !== orig.id) return;
           e.amount = n; e.note = note.trim();
-          if (!isIn) { e.cat = catId; e.work = work; e.bid = bid; } else e.source = source || 'Other';
+          if (!isIn) { e.cat = catId; e.work = false; e.bid = bid || (b && b.id); }
           if (day !== L.entryDay(orig)) { var d = L.parseKey(day), t = new Date(orig.ts); d.setHours(t.getHours(), t.getMinutes(), 0, 0); e.ts = d.getTime(); }
         });
       });
@@ -1874,16 +1799,15 @@
     }
     function del() { A.commit(function (x) { x.entries = x.entries.filter(function (e) { return e.id !== orig.id; }); }); A.say('Deleted'); A.back(); }
     return html`<div class="layer">
-      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">${isIn ? 'Edit money in' : 'Edit purchase'}</div></div>
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">${isIn ? 'Edit record' : 'Edit purchase'}</div></div>
       <div class="lb pad">
-        <label class="t-s muted" for="edit-amt" style=${{ marginBottom: '-12px' }}>Amount</label>
-        <input id="edit-amt" class="field num" style=${{ height: '64px', fontSize: '28px', fontWeight: 800 }} inputmode="numeric" value=${amt}
-          onInput=${function (e) { var d = +digits(e.target.value) || 0; setAmt(d ? N(d) : ''); }} />
-        ${isIn ? html`<div class="chips">${L.SOURCES.map(function (x) { return html`<button class=${cx('chip', source === x && 'on')} onClick=${function () { setSource(x); }}>${x}</button>`; })}</div>`
-          : html`<${CatGrid} value=${catId} onChange=${setCat} />`}
-        <input id="edit-note" class="field" placeholder="Note (optional)" aria-label="Note" maxlength="40" value=${note} onInput=${function (e) { setNote(e.target.value); }} />
-        <${DateChips} today=${today} value=${day} onChange=${setDay} />
-        ${!isIn && html`<${Seg} full=${true} value=${work ? 'work' : 'personal'} onChange=${function (v) { setWork(v === 'work'); }} options=${[{ v: 'personal', label: 'Personal' }, { v: 'work', label: 'Work' }]} />`}
+        <label class="fld"><span class="t-label">Amount</span>
+          <input id="edit-amt" class="field field-big num" inputmode="numeric" value=${amt}
+            onInput=${function (e) { var d = +digits(e.target.value) || 0; setAmt(d ? N(d) : ''); }} /></label>
+        ${!isIn && html`<div class="fld"><span class="t-label">Allocation</span><${AllocPick} value=${catId} pots=${sp} onChange=${setCat} /></div>`}
+        <label class="fld"><span class="t-label">What was it? <span class="muted fw-r">Optional</span></span>
+          <input id="edit-note" class="field" maxlength="40" value=${note} onInput=${function (e) { setNote(e.target.value); }} /></label>
+        <div class="fld"><span class="t-label">When?</span><${DateChips} today=${today} value=${day} onChange=${setDay} /></div>
       </div>
       <div class="lf pad">
         ${confirming ? html`<div class="card" style=${{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1910,10 +1834,10 @@
         go: function () { if (!has) A.create(); else if (confirmFresh) { setConfirm(false); A.startOver(); } else setConfirm(true); } },
       { t: 'Look around', d: 'A sample week with last week’s review.', b: 'Load sample', go: A.loadSample },
       { t: 'Log a purchase', d: 'Amount, then allocation. Watch the tank drop.', b: 'Log one', off: !live.length, go: function () { A.add(); } },
-      { t: 'Overspend an allocation', d: 'See it go red, then cover it from another allocation.', b: 'Try it', off: !treatB,
+      { t: 'Overspend an allocation', d: 'See it go red, then move money from another allocation.', b: 'Try it', off: !treatB,
         go: function () { var s = L.status(st, treatB, now), pt = s.pots.filter(function (x) { return x.id === 'treats'; })[0]; A.add({ kind: 'out', amount: Math.max(500, Math.ceil(((pt && pt.left) || 0) / 500) * 500 + 500), cat: 'treats', step: 'details' }); } },
       { t: 'Get the daily reminder', d: 'Only shows on days you haven’t logged.', b: 'Show it', off: !has, go: A.notify },
-      { t: 'Start a new week', d: 'What’s left moves to savings and a review appears.', b: 'Jump ahead', off: !has, go: A.nextWeek },
+      { t: 'Start a new week', d: 'What’s left is added to your total left over and a review appears.', b: 'Jump ahead', off: !has, go: A.nextWeek },
       { t: 'Act on an insight', d: 'Apply or skip a suggestion.', b: 'Open', off: !reviewB, go: function () { A.tab('insights'); } }
     ];
 
@@ -2003,8 +1927,15 @@
       window.addEventListener('keydown', k);
       return function () { window.removeEventListener('keydown', k); };
     });
-    var sUpd = useState(false), upd = sUpd[0], setUpd = sUpd[1];
-    useEffect(function () { function h() { setUpd(true); } window.addEventListener('budge-update', h); return function () { window.removeEventListener('budge-update', h); }; }, []);
+    // A new version was installed in the background: fetch its notes and ask to refresh.
+    var sUpd = useState(null), upd = sUpd[0], setUpd = sUpd[1];
+    useEffect(function () {
+      function h() {
+        fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); })
+          .then(function (v) { setUpd(v && v.version ? v : { notes: [] }); }, function () { setUpd({ notes: [] }); });
+      }
+      window.addEventListener('budge-update', h); return function () { window.removeEventListener('budge-update', h); };
+    }, []);
     useEffect(function () { if (L.anyRollover(st, now)) { var gained = 0; commit(function (x) { L.rolloverAll(x, now).forEach(function (h) { gained += h.saved || 0; }); }); if (gained > 0) SFX.play('chime'); } });
     // Big numbers shrink to fit their box (very large budgets would otherwise run into the gauge).
     useEffect(function () {
@@ -2085,8 +2016,6 @@
         if (layer.type === 'add') lay = html`<${AddFlow} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
         else if (layer.type === 'create') lay = html`<${CreateBudget} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
         else if (layer.type === 'feedback') lay = html`<${FeedbackLayer} st=${st} A=${A} />`;
-        else if (layer.type === 'month') lay = html`<${MonthLayer} st=${st} now=${now} A=${A} offset=${layer.offset} />`;
-        else if (layer.type === 'income') lay = html`<${PurchaseList} st=${st} now=${now} A=${A} />`;
         else if (layer.type === 'edit') lay = html`<${EditEntry} key=${layer.id} st=${st} now=${now} A=${A} id=${layer.id} />`;
         else if (lb && layer.type === 'cat') lay = html`<${CategoryDetail} key=${layer.id} st=${st} b=${lb} now=${now} A=${A} id=${layer.id} unit=${layer.unit} offset=${layer.offset} />`;
         else if (lb && layer.type === 'list') lay = html`<${PurchaseList} st=${st} b=${lb} now=${now} A=${A} unit=${layer.unit} offset=${layer.offset} />`;
@@ -2108,7 +2037,13 @@
             <b>Anything to log today?</b><span>${streakN > 0 ? 'Tap to add it and keep your ' + streakN + '-day streak.' : 'Tap to add what you spent.'}</span></div>
         </button>`}
         ${toast && html`<div class="toast" key=${toast.k} role="status">${toast.m}</div>`}
-        ${upd && html`<button class="toast toast-btn" onClick=${function () { location.reload(); }}>New version ready · <b>Refresh</b></button>`}
+        ${upd && html`<div class="update-card" role="dialog" aria-label="Update available">
+          <div class="update-top"><${Logo} size=${36} /><div class="grow"><div class="t-label">Budge has been updated</div>
+            ${upd.version && html`<div class="t-cap muted">Version ${upd.version}</div>`}</div></div>
+          ${upd.notes && upd.notes.length > 0 && html`<ul class="update-notes">${upd.notes.slice(0, 3).map(function (n) { return html`<li>${n}</li>`; })}</ul>`}
+          <div class="btn-row"><button class="btn btn-outline btn-sm" onClick=${function () { setUpd(null); }}>Later</button>
+            <button class="btn btn-primary btn-sm" onClick=${function () { location.reload(); }}>Refresh</button></div>
+        </div>`}
       </div>
       ${!PWA && !desk && html`<${Guide} st=${st} now=${now} A=${A} mode=${mode} />`}
       ${desk && html`<${QrCard} />`}
