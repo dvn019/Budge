@@ -1,0 +1,7 @@
+{
+  "name": "budge-reminders",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@pushforge/builder": "2.0.5" },
+  "devDependencies": { "wrangler": "4.151.3" }
+}

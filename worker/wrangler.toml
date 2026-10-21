@@ -1,0 +1,17 @@
+name = "budge-reminders"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+
+# Checks every 15 minutes who is due a reminder.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "budge-reminders"
+database_id = "847c981b-99df-4572-8ca5-e139556c8915"
+
+[vars]
+ALLOWED_ORIGIN = "https://dvn019.github.io"
+CONTACT = "mailto:danieladedoyinjunior@gmail.com"

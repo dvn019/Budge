@@ -32,7 +32,9 @@ No build step: it’s plain files served by GitHub Pages.
 
 ## Notifications
 
-Settings → **Allow notifications** → **Send a test notification** shows how the daily reminder looks. Scheduled reminders need a small server (planned: a free Cloudflare Worker); the service worker already handles incoming pushes.
+Settings → **Allow notifications** signs the phone up with the reminder server in `worker/` (a free Cloudflare Worker with a D1 database). Every 15 minutes it sends "Anything to log today?" to anyone whose reminder time has passed and who hasn't logged anything that day. It only stores the push sign-up, reminder time, time zone, last logged day and streak, never amounts.
+
+The worker deploys automatically from GitHub Actions when `worker/` changes (needs the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repo secrets).
 
 On iPhone, notifications only work after Budge is added to the Home Screen (iOS 16.4 or later).
 
