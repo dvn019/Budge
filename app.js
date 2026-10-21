@@ -846,7 +846,7 @@
   // ================= dashboard =================
   // First-run demo: a purchase drops into the Treats pot and the week's number ticks down, on a loop.
   // First run: the tank pours out a purchase and the number counts down, on a loop.
-  function DemoTank() {
+  function DemoTank(p) {
     var BUD = 50000, FROM = 32000, TO = 29500;
     var ph = useState(0), phase = ph[0], setPhase = ph[1];
     var vv = useState(FROM), val = vv[0], setVal = vv[1];
@@ -869,17 +869,27 @@
       return function () { live = false; clearTimeout(t1); clearTimeout(t2); cancelAnimationFrame(raf); };
     }, []);
     var chip = html`<div class=${cx('demo-chip', phase >= 1 && 'in')} aria-hidden="true"><${CatIcon} id="treats" size=${28} /><span>Shawarma</span><b class="num">−₦2,500</b></div>`;
-    return html`<${TankView} height=${320} ratio=${val / BUD} label="Left this week" big=${N(val)} footL="5 days left · ₦50,000 budget" footR=${Math.round(val / BUD * 100) + '% left'} chip=${chip} />`;
+    return html`<${TankView} height=${p.height || 320} ratio=${val / BUD} label="Left this week" big=${N(val)} footL="5 days left · ₦50,000 budget" footR=${Math.round(val / BUD * 100) + '% left'} chip=${chip} />`;
   }
   function Onboarding(p) {
-    var A = p.A;
+    var A = p.A, desk = useDesk();
+    // The tank fills whatever height is left on the screen (fixed size on desktop).
+    var heroRef = useRef(null), hs = useState(320), heroH = desk ? 440 : hs[0];
+    useEffect(function () {
+      var el = heroRef.current; if (!el || desk) return;
+      function measure() { var h = Math.round(el.clientHeight); if (h > 0) hs[1](Math.max(240, h)); }
+      measure();
+      var ro = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+      if (ro) ro.observe(el); else window.addEventListener('resize', measure);
+      return function () { if (ro) ro.disconnect(); else window.removeEventListener('resize', measure); };
+    }, [desk]);
     return html`<div class="onboard pad">
       <div class="onboard-brand"><${Logo} size=${32} /><span>Budge</span></div>
-      <div class="onboard-hero"><${DemoTank} /></div>
       <div class="onboard-copy">
-        <h1 class="onboard-title">See what’s left as you spend</h1>
-        <p class="t-body muted">Set a weekly budget, split it into pots and log what you buy in two taps.</p>
+        <h1 class="onboard-title">See what’s left<br />as you spend</h1>
+        <p>Set a weekly budget, split it into pots and log what you buy in two taps.</p>
       </div>
+      <div class="onboard-hero" ref=${heroRef}><${DemoTank} height=${heroH} /></div>
       <div class="onboard-actions">
         <button class="btn btn-primary" onClick=${function () { A.create(); }}>Set up my budget</button>
         <button class="btn btn-outline" onClick=${A.loadSample}>Look around first</button>
@@ -1547,13 +1557,14 @@
       foot = html`<button class="btn btn-primary" onClick=${next}>Continue</button>`;
     } else if (cur === 'amount') {
       var quick = kind === 'month' ? [150000, 200000, 300000, 500000] : [30000, 50000, 80000, 100000];
-      body = html`
+      body = html`<div class="lb lb-amount">
         <div class="pad"><h1 class="h1">How much can you spend each ${u}?</h1>
           <p class="t-s muted" style=${{ margin: '8px 0 0' }}>Leave out rent and savings. You can change it any time.</p></div>
         <div class="amount-wrap pad"><${BigAmount} value=${total} />
           <div class="quick">${quick.map(function (q) { return html`<button class=${cx('chip', n === q && 'on')} onClick=${function () { setTotal(String(q)); }}>${L.short(q)}</button>`; })}</div>
         </div>
-        <div class="pad"><${Keypad} onKey=${onKey} /></div>`;
+        <div class="pad"><${Keypad} onKey=${onKey} /></div>
+      </div>`;
       foot = html`<button class="btn btn-primary" disabled=${n < 1000} onClick=${toSplit}>Continue</button>`;
     } else if (cur === 'split') {
       body = html`<div class="lb pad"><div><h1 class="h1">Split it into pots</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>A pot is what you can spend on one thing each ${u}. We’ve made a start. Change any amount.</p></div>

@@ -1,6 +1,6 @@
 // Budge service worker: works offline, shows notifications.
-const CACHE = 'budge-ca9f8f0b';
-const ASSETS = ["./", "index.html", "style.css?v=ca9f8f0b", "app.js?v=ca9f8f0b", "vendor/preact-htm.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/badge-96.png", "icons/favicon.svg"];
+const CACHE = 'budge-0731a68a';
+const ASSETS = ["./", "index.html", "style.css?v=0731a68a", "app.js?v=0731a68a", "vendor/preact-htm.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/badge-96.png", "icons/favicon.svg"];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

@@ -440,15 +440,15 @@ button.sum-cell:hover .t-cap { color: var(--ink); text-decoration: underline; }
 
 /* ---------- v6: first-run screen ---------- */
 .screen-onboard { display: flex; flex-direction: column; }
-.onboard { flex: 1; min-height: 100%; display: flex; flex-direction: column; gap: 24px; padding-top: 24px; padding-bottom: 24px; }
+.onboard { flex: 1; min-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px; padding-top: 16px; padding-bottom: 24px; }
 .onboard-brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-.onboard-hero { flex: 1; display: flex; align-items: center; min-height: 0; }
+.onboard-hero { flex: 1 1 0; display: flex; align-items: stretch; min-height: 240px; }
 .onboard-hero .tank { width: 100%; }
-.onboard-title { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 8px; text-wrap: balance; }
-.onboard-copy p { margin: 0; }
+.onboard-title { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 48px; margin: 0 0 8px; }
+.onboard-copy p { margin: 0; font-size: 16px; font-weight: 500; line-height: 24px; color: var(--ink-2); }
 .onboard-actions { display: flex; flex-direction: column; gap: 4px; }
 .tank .demo-chip { top: 128px; z-index: 2; }
-@media (max-height: 720px) { .onboard { gap: 16px; padding-top: 12px; } .onboard-hero .tank { height: 250px !important; } }
+@media (max-height: 720px) { .onboard { gap: 16px; padding-top: 12px; } .onboard-title { font-size: 34px; line-height: 40px; } }
 .btn-outline { background: var(--surface, #fff); color: var(--ink); border: 1px solid #E3E6E4; }
 .btn-outline:active { background: #F4F5F4; }
 .onboard-actions { gap: 10px; }
@@ -487,7 +487,7 @@ button.sum-cell:hover .t-cap { color: var(--ink); text-decoration: underline; }
 .desk .tab-home .pots-card, .desk .tab-home .card, .desk .tab-home .empty { background: var(--surface); }
 .desk .home-today .list { background: var(--surface); border-radius: 16px; padding: 4px 16px; border: 1px solid #EEEEEE; }
 .desk .tabpad { padding-bottom: 180px; }
-.desk .tank { height: 340px !important; }
+.desk .tab-home .tank { height: 340px !important; }
 .desk .toast { bottom: 32px; left: calc(50% + 130px); }
 
 .side { width: 260px; flex: none; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; padding: 28px 20px 24px; box-sizing: border-box; }
@@ -506,7 +506,7 @@ button.sum-cell:hover .t-cap { color: var(--ink); text-decoration: underline; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .desk .layer { position: relative; inset: auto; width: 440px; max-width: 100%; height: min(820px, 100%); border-radius: 28px; overflow: hidden; box-shadow: 0 30px 80px rgba(11, 15, 13, .25); animation-name: slideUp; }
 
-.qr-card { position: fixed; right: 24px; bottom: 24px; z-index: 50; width: 280px; display: flex; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px 14px 14px 14px; box-shadow: 0 16px 40px rgba(11, 15, 13, .12); }
+.qr-card { position: fixed; right: 24px; bottom: 24px; z-index: 50; width: 310px; display: flex; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px 14px 14px 14px; box-shadow: 0 16px 40px rgba(11, 15, 13, .12); }
 .qr { width: 84px; height: 84px; flex: none; border-radius: 8px; }
 .qr-text { flex: 1; min-width: 0; padding-right: 18px; display: flex; flex-direction: column; gap: 4px; }
 .qr-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; }
@@ -519,6 +519,8 @@ button.sum-cell:hover .t-cap { color: var(--ink); text-decoration: underline; }
 .desk .onboard-hero { grid-area: hero; align-self: center; }
 .desk .onboard-copy { grid-area: copy; }
 .desk .onboard-actions { grid-area: actions; max-width: 360px; }
-.desk .onboard-title { font-size: 44px; }
-.desk .onboard-copy p { font-size: 18px; max-width: 420px; }
-.desk .onboard-hero .tank { height: 420px !important; }
+.desk .onboard-title { font-size: 52px; line-height: 60px; }
+.desk .onboard-copy p { font-size: 18px; line-height: 28px; max-width: 420px; }
+.desk .onboard-hero { min-height: 0; }
+/* Setup amount step: the middle scrolls so Continue is always reachable */
+.lb-amount { min-height: 0; flex-shrink: 1; }
