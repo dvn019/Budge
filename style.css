@@ -717,3 +717,11 @@ body { background: var(--ground); color: var(--ink); }
 .wn-card .wn-notes { margin: 4px 0 12px; }
 .wn-card .btn { width: 100%; }
 .total-wrap .t-s { margin-left: 6px; white-space: nowrap; }
+
+/* ---------- v17 preview: just tracking ---------- */
+.track-wait { display: flex; flex-direction: column; gap: 10px; }
+.track-dots { display: flex; gap: 6px; }
+.track-dots i { flex: 1; height: 6px; border-radius: 6px; background: var(--track); }
+.track-dots i.on { background: var(--emerald); }
+.track-ready { display: flex; gap: 12px; align-items: flex-start; background: var(--emerald-soft); }
+.track-ready .grow { flex: 1; min-width: 0; }
