@@ -1,3 +1,4 @@
+@font-face { font-family: 'Dancing Script'; font-style: normal; font-display: swap; font-weight: 500; src: url(fonts/dancing-script-latin-500-normal.woff2) format('woff2'); }
 @font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900; src: url(fonts/inter-latin-wght-normal.woff2) format('woff2-variations'), url(fonts/inter-latin-wght-normal.woff2) format('woff2'); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
 @font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900; src: url(fonts/inter-latin-ext-wght-normal.woff2) format('woff2-variations'), url(fonts/inter-latin-ext-wght-normal.woff2) format('woff2'); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
 :root { --fs-xs: 12px; --fs-s: 14px; --fs-m: 16px; --fs-l: 20px; --fs-xl: 28px; --fs-d1: 36px; --fs-d2: 44px; --fs-d3: 56px; }
@@ -876,3 +877,31 @@ button.row:active, .ev-card:active, .ev-prompt-main:active { transform: scale(.9
 .sync-ic { width: 52px; height: 52px; border-radius: 16px; background: var(--emerald-soft); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 4px; }
 .sync-short { margin: 4px 0 2px; width: 100%; }
 .sync-card .btn-primary { margin-top: 8px; }
+
+/* ---------- 1.14: currency wheel, special thanks ---------- */
+.cur-lb { gap: 20px; }
+.wheel { position: relative; height: 340px; perspective: 700px; outline: none; margin: 4px -4px 0; }
+.wheel:focus-visible .wheel-band { box-shadow: 0 0 0 2px var(--emerald); }
+.wheel-band { position: absolute; left: 0; right: 0; top: 140px; height: 60px; border-radius: 18px; background: var(--emerald-soft); z-index: 0; }
+.wheel-scroll { position: relative; z-index: 1; height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent); }
+.wheel-scroll::-webkit-scrollbar { display: none; }
+.wheel-pad { height: 140px; }
+.wheel-item { height: 60px; width: 100%; display: flex; align-items: center; gap: 14px; padding: 0 16px; scroll-snap-align: center; transform-origin: 50% 50% -60px; color: var(--ink); text-align: left; }
+.wheel-sym { flex: none; width: 40px; height: 40px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-m); font-weight: 600; color: var(--ink-2); transition: background-color .2s, color .2s; }
+.wheel-item.on .wheel-sym { background: var(--emerald); border-color: transparent; color: #fff; }
+.wheel-name { flex: 1; font-size: var(--fs-l); font-weight: 600; letter-spacing: -0.01em; }
+.wheel-item:not(.on) .wheel-name { font-weight: 500; color: var(--ink-2); }
+.wheel-code { font-size: var(--fs-s); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cur-preview { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 24px; padding: 22px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; animation: riseIn .35s cubic-bezier(.2, .8, .2, 1) both; }
+.cur-from { font-size: var(--fs-l); color: var(--muted); }
+.cur-arrow { color: var(--faint); font-size: var(--fs-l); line-height: 1; }
+.cur-to { font-size: var(--fs-d1); font-weight: 600; letter-spacing: -0.03em; color: var(--emerald-deep); margin-bottom: 8px; }
+.cur-off { display: flex; gap: 12px; align-items: flex-start; background: var(--warning-soft); border-radius: 20px; padding: 16px; }
+.cur-off svg { flex: none; margin-top: 2px; }
+.script { font-family: 'Dancing Script', cursive; font-weight: 500; letter-spacing: 0; }
+.thanks-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 18px 0 8px; border-top: 1px solid var(--line); color: var(--muted); text-align: left; }
+.thanks-row .script { font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.thanks-list { list-style: none; margin: 4px 0 0; padding: 0; }
+.thanks-list li { font-size: 36px; line-height: 1.25; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--ink); animation: riseIn .45s cubic-bezier(.2, .8, .2, 1) both; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .thanks-list li, .cur-preview { animation: none; } }

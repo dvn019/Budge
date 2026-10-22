@@ -75,18 +75,59 @@
   function time12(s) { var p = s.split(':'); var d = new Date(2000, 0, 1, +p[0], +p[1]); return timeLabel(d.getTime()); }
 
   // ---------- money ----------
+  // Currencies. k scales the app's built-in naira step sizes (round to ₦500, etc.) to sensible steps in other currencies.
+  var CURRENCIES = {
+    NGN: { code: 'NGN', sym: '₦', name: 'Naira', dp: 0, k: 1 },
+    USD: { code: 'USD', sym: '$', name: 'US dollar', dp: 2, k: 1 / 500 },
+    GBP: { code: 'GBP', sym: '£', name: 'British pound', dp: 2, k: 1 / 500 },
+    EUR: { code: 'EUR', sym: '€', name: 'Euro', dp: 2, k: 1 / 500 },
+    CAD: { code: 'CAD', sym: 'C$', name: 'Canadian dollar', dp: 2, k: 1 / 500 }
+  };
+  var CUR_ORDER = ['NGN', 'USD', 'GBP', 'EUR', 'CAD'];
+  var CUR = CURRENCIES.NGN;
+  function setCurrency(code) { CUR = CURRENCIES[code] || CURRENCIES.NGN; }
+  function cur() { return CUR; }
+  function S(n) { return CUR.dp ? n * CUR.k : n; }                    // a naira-sized step in the current currency
+  function m2(n) { return CUR.dp ? Math.round(n * 100) / 100 : Math.round(n); }
+  function groups(s) { return s.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function naira(n) {
-    var neg = n < 0; n = Math.round(Math.abs(n));
-    return (neg ? '−' : '') + '₦' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    var neg = n < 0, v = Math.abs(n), txt;
+    if (CUR.dp) { v = Math.round(v * 100) / 100; txt = v % 1 === 0 ? groups(String(v)) : groups(String(Math.floor(v))) + '.' + v.toFixed(2).split('.')[1]; }
+    else txt = groups(String(Math.round(v)));
+    return (neg ? '−' : '') + CUR.sym + txt;
   }
   function short(n) {
-    if (n >= 1000000) return '₦' + (Math.round(n / 100000) / 10) + 'm';
-    if (n >= 1000) return '₦' + (Math.round(n / 100) / 10) + 'k';
-    return '₦' + Math.round(n);
+    if (n >= 1000000) return CUR.sym + (Math.round(n / 100000) / 10) + 'm';
+    if (n >= 10000 || (!CUR.dp && n >= 1000)) return CUR.sym + (Math.round(n / 100) / 10) + 'k';
+    return naira(n);
   }
-  function roundTo(n, step) { return Math.round(n / step) * step; }
-  function down50(n) { return Math.floor(n / 50) * 50; }
-  function up50(n) { return Math.ceil(n / 50) * 50; }
+  // Text typed into a money field → a number in the current currency.
+  function parseMoney(s) {
+    var t = String(s || '').replace(/[^0-9.]/g, '');
+    if (!CUR.dp) return +t.replace(/\./g, '') || 0;
+    var i = t.indexOf('.'); if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '').slice(0, 2);
+    return +t || 0;
+  }
+  function roundTo(n, step) { step = S(step); return m2(Math.round(n / step) * step); }
+  function down50(n) { var st = S(50); return m2(Math.floor(n / st) * st); }
+  function up50(n) { var st = S(50); return m2(Math.ceil(n / st) * st); }
+  // Switch every amount in the app to another currency at one rate (f = new per old).
+  function convertState(s, f, to) {
+    setCurrency(to);
+    function c(v) { return v == null || v === '' ? v : m2((+v || 0) * f); }
+    function map(o) { if (!o) return o; var n = {}; for (var k in o) n[k] = c(o[k]); return n; }
+    (s.entries || []).forEach(function (e) { e.amount = c(e.amount); });
+    (s.budgets || []).forEach(function (b) {
+      b.cats = map(b.cats); if (b.total != null) b.total = c(b.total);
+      if (b.adj) { b.adj.d = map(b.adj.d); if (b.adj.t != null) b.adj.t = c(b.adj.t); }
+      (b.history || []).forEach(function (h) { ['budget', 'spent', 'work', 'saved', 'over'].forEach(function (k) { if (h[k] != null) h[k] = c(h[k]); }); h.budgets = map(h.budgets); h.byCat = map(h.byCat); });
+    });
+    (s.events || []).forEach(function (ev) { ev.total = c(ev.total); (ev.items || []).forEach(function (it) { it.amount = c(it.amount); }); });
+    s.savings = c(s.savings || 0);
+    if (s.balance && s.balance.amount != null) s.balance.amount = c(s.balance.amount);
+    s.currency = to;
+    return s;
+  }
 
   // ---------- state ----------
   // v2: many budgets. Spending entries carry a budget id (bid); money in belongs to the person, not a budget.
@@ -128,16 +169,16 @@
     b.adj.t = (+b.adj.t || 0) + amt;
   }
   function autoSplit(total) {
-    var step = total >= 20000 ? 500 : 100, c = {}, s = 0;
-    Object.keys(SPLIT).forEach(function (id) { c[id] = Math.floor(total * SPLIT[id] / step) * step; s += c[id]; });
-    c.other += total - s;
+    var step = S(total >= S(20000) ? 500 : 100), c = {}, s = 0;
+    Object.keys(SPLIT).forEach(function (id) { c[id] = m2(Math.floor(total * SPLIT[id] / step) * step); s += c[id]; });
+    c.other = m2(c.other + total - s);
     allCats().forEach(function (x) { if (!(x.id in c)) c[x.id] = 0; });
     return c;
   }
   function convertBudgets(c, to, todayKey) {
     var f = to === 'month' ? daysInMonth(todayKey) / 7 : 7 / daysInMonth(todayKey);
     var out = {};
-    allCats().forEach(function (x) { var v = (+c[x.id] || 0) * f; out[x.id] = v ? Math.max(100, roundTo(v, v >= 5000 ? 500 : 100)) : 0; });
+    allCats().forEach(function (x) { var v = (+c[x.id] || 0) * f; out[x.id] = v ? Math.max(S(100), roundTo(v, v >= S(5000) ? 500 : 100)) : 0; });
     return out;
   }
   function migrate(s) {
@@ -146,6 +187,7 @@
       if (!s.customCats) s.customCats = [];
       if (!s.catNames) s.catNames = {};
       if (s.balance === undefined) s.balance = null;
+      if (!s.currency && ((s.budgets || []).length || (s.entries || []).length || (s.events || []).length)) s.currency = 'NGN';
       if (!s.mainBid && s.budgets.length) s.mainBid = (s.budgets.filter(function (b) { return b.kind === 'repeat'; })[0] || s.budgets[0]).id;
       return s;
     }
@@ -470,7 +512,7 @@
     if (b.kind === 'repeat') {
       // 1: treats over 30% of spending, and the limit isn't working -> a lower treat limit
       if (treatSpent > 0 && treatSpent / total > 0.3) {
-        var x = Math.max(1000, roundTo(treatSpent * 0.55, 1000));
+        var x = Math.max(S(1000), roundTo(treatSpent * 0.55, 1000));
         if (b.done['treat-' + p.start] || !limit || (treatSpent > limit && limit > x)) {
           r.suggestions.push({
             key: 'treat-' + p.start, kind: 'treat', amount: x,
@@ -490,11 +532,11 @@
         var o = overs[0], donors = [];
         allCats().forEach(function (c) {
           var v = +cats[c.id] || 0, spare = v - (byCat[c.id] || 0);
-          if (c.id !== o.c.id && v > 0 && spare >= 500) donors.push({ c: c, spare: spare });
+          if (c.id !== o.c.id && v > 0 && spare >= S(500)) donors.push({ c: c, spare: spare });
         });
         donors.sort(function (m, n) { return n.spare - m.spare; });
         if (donors.length) {
-          var d = donors[0], amt = Math.min(Math.ceil(o.by / 500) * 500, Math.floor(d.spare / 500) * 500);
+          var d = donors[0], q = S(500), amt = m2(Math.min(Math.ceil(o.by / q) * q, Math.floor(d.spare / q) * q));
           r.suggestions.push({
             key: 'move-' + o.c.id + '-' + p.start, kind: 'move', from: d.c.id, to: o.c.id, amount: amt,
             title: 'Move ' + naira(amt) + ' from ' + d.c.name.toLowerCase() + ' to ' + o.c.name.toLowerCase() + '?',
@@ -507,7 +549,7 @@
     var avg = tEnts.length ? treatSpent / tEnts.length : 0;
     var lunchy = tEnts.filter(function (e) { return bucketOf(e.ts).id === 'lunch'; }).length >= tEnts.length / 2;
     if (treatSpent / total > 0.3 && avg) {
-      var each = Math.max(500, roundTo(avg, 500));
+      var each = Math.max(S(500), roundTo(avg, 500));
       r.tips.push(lunchy
         ? 'Take lunch from home two days a ' + tu + '. At about ' + naira(each) + ' a lunch, that’s ' + naira(each * 2) + ' back each ' + tu + '.'
         : 'Pick two treat-free days a ' + tu + '. Your average treat costs about ' + naira(each) + '.');
@@ -564,15 +606,15 @@
     var today = dkey(now), info = trackInfo(state, b, now), P = b.rhythm === 'month' ? daysInMonth(today) : 7;
     var from = info.days > P ? addDays(today, -(P - 1)) : info.start, D = diffDays(from, today) + 1;
     var ents = state.entries.filter(function (e) { return personalOut(e) && entryDay(e) >= from && entryDay(e) <= today; });
-    var spent = sum(ents), by = catTotals(ents), f = P / D, step = P > 7 ? 1000 : 500, cats = {};
+    var spent = sum(ents), by = catTotals(ents), f = P / D, step = S(P > 7 ? 1000 : 500), cats = {};
     allCats().forEach(function (c) {
       var v = (by[c.id] || 0) * f;
       if (c.id === 'treats') v *= 0.9; // a gentle nudge where most people overspend
-      cats[c.id] = v > 0 ? Math.max(step, Math.round(v / step) * step) : 0;
+      cats[c.id] = v > 0 ? m2(Math.max(step, Math.round(v / step) * step)) : 0;
     });
-    var total = Math.ceil(totalBudget(cats) / 1000) * 1000;
-    cats.other = (cats.other || 0) + (total - totalBudget(cats));
-    return { total: total, cats: cats, spent: spent, scaled: Math.round(spent * f), days: D, full: D >= P, period: P > 7 ? 'month' : 'week' };
+    var total = m2(Math.ceil(totalBudget(cats) / S(1000)) * S(1000));
+    cats.other = m2((cats.other || 0) + (total - totalBudget(cats)));
+    return { total: total, cats: cats, spent: spent, scaled: m2(spent * f), days: D, full: D >= P, period: P > 7 ? 'month' : 'week' };
   }
 
   // ---------- quick logging ----------
@@ -684,7 +726,7 @@
     dkey: dkey, parseKey: parseKey, addDays: addDays, diffDays: diffDays, weekStart: weekStart, monthStart: monthStart,
     daysInMonth: daysInMonth, periodStart: periodStart, periodEnd: periodEnd, shiftPeriod: shiftPeriod,
     rangeLabel: rangeLabel, dayLabel: dayLabel, shortDate: shortDate, weekdayName: weekdayName, timeLabel: timeLabel, hhmm: hhmm, time12: time12,
-    naira: naira, short: short, roundTo: roundTo, uid: uid, blankState: blankState, newBudget: newBudget, findBudget: findBudget,
+    naira: naira, short: short, setCurrency: setCurrency, cur: cur, S: S, m2: m2, parseMoney: parseMoney, convertState: convertState, CURRENCIES: CURRENCIES, CUR_ORDER: CUR_ORDER, roundTo: roundTo, uid: uid, blankState: blankState, newBudget: newBudget, findBudget: findBudget,
     unitOf: unitOf, phaseOf: phaseOf, totalBudget: totalBudget, eventEnd: eventEnd, eventStatus: eventStatus, activeEvents: activeEvents, eventsOn: eventsOn, trackInfo: trackInfo, suggestBudget: suggestBudget, frequent: frequent, parseAlert: parseAlert, planTotal: planTotal, periodTotal: periodTotal, setPeriod: setPeriod, raisePeriod: raisePeriod, autoSplit: autoSplit, convertBudgets: convertBudgets, migrate: migrate,
     entryDay: entryDay, personalOut: personalOut, catTotals: catTotals, ofBudget: ofBudget, streak: streak, loggedOn: loggedOn, bestStreak: bestStreak, badges: badges, daysLogged: daysLogged,
     status: status, monthSummary: monthSummary, summarize: summarize, needsRollover: needsRollover, anyRollover: anyRollover,
@@ -753,6 +795,17 @@
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }
   function digits(s) { return String(s || '').replace(/\D/g, ''); }
+  function money(s) { return L.parseMoney(s); }
+  // Live formatting for money fields: keeps a typed "." and cents in currencies that have them.
+  function typing(raw) {
+    var c = L.cur(), t = String(raw || '').replace(/[^0-9.]/g, '');
+    if (!c.dp) { var v = +t.replace(/\./g, '') || 0; return v ? N(v) : ''; }
+    var i = t.indexOf('.'), whole = i >= 0 ? t.slice(0, i) : t, dec = i >= 0 ? t.slice(i + 1).replace(/\./g, '').slice(0, 2) : null;
+    whole = whole.replace(/^0+(?=\d)/, '');
+    if (!whole && dec === null) return '';
+    return c.sym + (whole || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec !== null ? '.' + dec : '');
+  }
+  function numMode() { return L.cur().dp ? 'decimal' : 'numeric'; }
 
   // ================= persistence: account store (db) with a device copy =================
   var Persist = {
@@ -897,7 +950,7 @@
     return html`<button class=${cx('toggle', p.on && 'on')} role="switch" aria-checked=${!!p.on} aria-label=${p.label} onClick=${function () { SFX.play('tap'); p.onChange(!p.on); }}></button>`;
   }
   function Keypad(p) {
-    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'del'];
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', L.cur().dp ? '.' : '00', '0', 'del'];
     return html`<div class="keypad">${keys.map(function (k) {
       return html`<button class=${cx('key', k === 'del' && 'key-del')} aria-label=${k === 'del' ? 'Delete' : k} onClick=${function () { SFX.play('key'); p.onKey(k); }}>
         ${k === 'del' ? html`<${Icon} n="del" size=${30} />` : k}</button>`;
@@ -905,8 +958,10 @@
   }
   function applyKey(str, k) {
     if (k === 'del') return str.slice(0, -1);
-    var s = (str + k).replace(/^0+/, '');
-    return s.length > 9 ? str : s;
+    if (k === '.') { if (!L.cur().dp || str.indexOf('.') >= 0) return str; return (str || '0') + '.'; }
+    var i = str.indexOf('.'); if (i >= 0 && str.length - i > 2) return str;      // two decimals at most
+    var s = str + k; if (s.indexOf('.') < 0) s = s.replace(/^0+/, '');
+    return s.replace(/\./g, '').length > 9 ? str : s;
   }
   function useKeys(onKey, onEnter, active) {
     useEffect(function () {
@@ -914,6 +969,7 @@
       function h(e) {
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
         if (/^[0-9]$/.test(e.key)) { onKey(e.key); e.preventDefault(); }
+        else if (e.key === '.' && L.cur().dp) { onKey('.'); e.preventDefault(); }
         else if (e.key === 'Backspace') { onKey('del'); e.preventDefault(); }
         else if (e.key === 'Enter' && onEnter) { onEnter(); e.preventDefault(); }
       }
@@ -922,7 +978,7 @@
     });
   }
   function BigAmount(p) {
-    var v = +p.value || 0, txt = (p.prefix || '') + N(v), len = txt.length;
+    var raw = String(p.value == null ? '' : p.value), v = +raw || 0, txt = (p.prefix || '') + (raw.indexOf('.') >= 0 ? typing(raw) : N(v)), len = txt.length;
     return html`<div class=${cx('amount d-xl num', len > 10 && 'shrink', len > 12 && 'shrink2', !v && 'faint')}>${txt}</div>`;
   }
   function Back(p) {
@@ -981,7 +1037,7 @@
   // First-run demo: a purchase drops into the Treats pot and the week's number ticks down, on a loop.
   // First run: the tank pours out a purchase and the number counts down, on a loop.
   function DemoTank(p) {
-    var BUD = 50000, FROM = 32000, TO = 29500;
+    var BUD = L.S(50000), FROM = L.S(32000), TO = L.S(29500);
     var ph = useState(0), phase = ph[0], setPhase = ph[1];
     var vv = useState(FROM), val = vv[0], setVal = vv[1];
     var still = false;
@@ -995,18 +1051,23 @@
           if (!live) return;
           setPhase(1);
           var s0 = performance.now();
-          (function step(t) { var k = Math.min(1, (t - s0) / 900); setVal(Math.round(FROM - (FROM - TO) * (1 - Math.pow(1 - k, 3)))); if (k < 1 && live) raf = requestAnimationFrame(step); })(s0);
+          (function step(t) { var k = Math.min(1, (t - s0) / 900); setVal(L.m2(FROM - (FROM - TO) * (1 - Math.pow(1 - k, 3)))); if (k < 1 && live) raf = requestAnimationFrame(step); })(s0);
           t2 = setTimeout(function () { if (live) cycle(); }, 3200);
         }, 1500);
       }
       cycle();
       return function () { live = false; clearTimeout(t1); clearTimeout(t2); cancelAnimationFrame(raf); };
     }, []);
-    var chip = html`<div class=${cx('demo-chip', phase >= 1 && 'in')} aria-hidden="true"><${CatIcon} id="treats" size=${28} /><span>Shawarma</span><b class="num">−₦2,500</b></div>`;
-    return html`<${TankView} height=${p.height || 320} ratio=${val / BUD} label="Left this week" big=${N(val)} footL="5 days left · ₦50,000 budget" footR=${Math.round(val / BUD * 100) + '% left'} chip=${chip} />`;
+    var chip = html`<div class=${cx('demo-chip', phase >= 1 && 'in')} aria-hidden="true"><${CatIcon} id="treats" size=${28} /><span>Shawarma</span><b class="num">−${N(L.S(2500))}</b></div>`;
+    return html`<${TankView} height=${p.height || 320} ratio=${val / BUD} label="Left this week" big=${N(val)} footL=${'5 days left · ' + N(BUD) + ' budget'} footR=${Math.round(val / BUD * 100) + '% left'} chip=${chip} />`;
   }
   function Onboarding(p) {
-    var A = p.A, desk = useDesk();
+    var A = p.A, desk = useDesk(), st = p.st || {};
+    // First launch: pick a currency before anything else.
+    function go(then) {
+      if (!st.currency) { A.open({ type: 'currency', mode: 'first', then: then, k: Date.now() }); return; }
+      if (then === 'track') A.open({ type: 'track' }); else if (then === 'event') A.open({ type: 'eventEdit' }); else A.create();
+    }
     // The tank fills whatever height is left on the screen (fixed size on desktop).
     var heroRef = useRef(null), hs = useState(320), heroH = desk ? 440 : hs[0];
     useEffect(function () {
@@ -1025,9 +1086,9 @@
       </div>
       <div class="onboard-hero" ref=${heroRef}><${DemoTank} height=${heroH} /></div>
       <div class="onboard-actions">
-        <button class="btn btn-primary" onClick=${function () { A.create(); }}>Set up my budget</button>
-        <button class="btn btn-outline" onClick=${function () { A.open({ type: 'track' }); }}>Just track my spending first</button>
-        <button class="btn btn-text ev-entry" onClick=${function () { A.open({ type: 'eventEdit' }); stat('event-new-open', true); }}>Planning for an event? Start there</button>
+        <button class="btn btn-primary" onClick=${function () { go('create'); }}>Set up my budget</button>
+        <button class="btn btn-outline" onClick=${function () { go('track'); }}>Just track my spending first</button>
+        <button class="btn btn-text ev-entry" onClick=${function () { go('event'); stat('event-new-open', true); }}>Planning for an event? Start there</button>
         ${!PWA && html`<button class="btn btn-text proto-link" onClick=${A.loadSample}>Prototype only: load a sample week</button>`}
       </div>
     </div>`;
@@ -1045,7 +1106,106 @@
             <ul class="wn-notes">${r.notes.map(function (n) { return html`<li>${n}</li>`; })}</ul>
           </div>`;
         })}
+        <button class="thanks-row" onClick=${function () { A.open({ type: 'thanks' }); stat('thanks-open', true); }}>
+          <span class="script">Thanks to Fom Fom, Wale & more</span><${Icon} n="right" size=${16} color="var(--faint)" /></button>
       </div>
+    </div>`;
+  }
+  // The people whose feedback shaped Budge, written in a hand-drawn script.
+  var THANKS = ['Fola ( Fom x2 )', 'Oyinlayefa', 'Wale', 'Axel', 'thepressman', 'Multimudia', 'OG'];
+  function Thanks(p) {
+    var A = p.A;
+    return html`<div class="layer">
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Special thanks</div></div>
+      <div class="lb pad">
+        <p class="t-s muted" style=${{ margin: 0 }}>The people whose ideas and feedback shaped every version of Budge.</p>
+        <ul class="thanks-list">${THANKS.map(function (n, i) { return html`<li class="script" key=${n} style=${{ animationDelay: (i * 70) + 'ms' }}>${n}</li>`; })}</ul>
+        ${CFG.tally && html`<div class="t-s muted">Have an idea? <button class="link" style=${{ padding: 0 }} onClick=${function () { A.open({ type: 'feedback' }); stat('feedback-open', true); }}>Send feedback</button></div>`}
+      </div>
+    </div>`;
+  }
+  // ---------- currency ----------
+  // An iOS-style picker wheel: flick the list, the option in the middle band is the choice.
+  function CurrencyWheel(p) {
+    var ref = useRef(null), H = 60, codes = L.CUR_ORDER, last = useRef(codes.indexOf(p.value)), raf = useRef(0);
+    function paint() {
+      var el = ref.current; if (!el) return;
+      var c = el.scrollTop / H;
+      Array.prototype.forEach.call(el.querySelectorAll('.wheel-item'), function (it, i) {
+        var d = i - c, a = Math.min(Math.abs(d), 3);
+        it.style.transform = 'rotateX(' + (-d * 22) + 'deg) scale(' + (1 - a * .07) + ')';
+        it.style.opacity = String(1 - a * .24);
+        it.classList.toggle('on', Math.abs(d) < .5);
+      });
+      var idx = Math.max(0, Math.min(codes.length - 1, Math.round(c)));
+      if (idx !== last.current) { last.current = idx; SFX.play('key'); SFX.tick(); p.onChange(codes[idx]); }
+    }
+    useEffect(function () { var el = ref.current; if (el) el.scrollTop = Math.max(0, codes.indexOf(p.value)) * H; paint(); }, []);
+    function onScroll() { cancelAnimationFrame(raf.current); raf.current = requestAnimationFrame(paint); }
+    function key(e) {
+      var i = codes.indexOf(p.value) + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0);
+      if (i !== codes.indexOf(p.value) && i >= 0 && i < codes.length) { e.preventDefault(); ref.current.scrollTo({ top: i * H, behavior: 'smooth' }); }
+    }
+    return html`<div class="wheel" role="listbox" aria-label="Currency" tabindex="0" onKeyDown=${key}>
+      <div class="wheel-band" aria-hidden="true"></div>
+      <div class="wheel-scroll" ref=${ref} onScroll=${onScroll}>
+        <div class="wheel-pad"></div>
+        ${codes.map(function (code, i) {
+          var c = L.CURRENCIES[code];
+          return html`<button class="wheel-item" key=${code} role="option" aria-selected=${p.value === code} onClick=${function () { ref.current.scrollTo({ top: i * H, behavior: 'smooth' }); }}>
+            <span class="wheel-sym">${c.sym}</span><span class="wheel-name">${c.name}</span><span class="wheel-code">${code}</span></button>`;
+        })}
+        <div class="wheel-pad"></div>
+      </div>
+    </div>`;
+  }
+  function inCurrency(code, fn) { var was = L.cur().code; L.setCurrency(code); try { return fn(); } finally { L.setCurrency(was); } }
+  function CurrencyLayer(p) {
+    var st = p.st, A = p.A, first = p.mode === 'first', from = st.currency || 'NGN';
+    var sv = useState(first ? 'NGN' : from), val = sv[0], setVal = sv[1];
+    var sq = useState(null), q = sq[0], setQ = sq[1];   // {state:'loading'|'ready'|'offline', f}
+    var b = L.mainBudget(st);
+    function go() {
+      if (first) {
+        A.commit(function (x) { x.currency = val; }); L.setCurrency(val); stat('currency-' + val, true);
+        if (p.then === 'track') A.show({ type: 'track' }); else if (p.then === 'event') A.show({ type: 'eventEdit' }); else A.create();
+        return;
+      }
+      setQ({ state: 'loading' });
+      fetch('https://open.er-api.com/v6/latest/' + from).then(function (r) { return r.json(); }).then(function (d) {
+        var f = d && d.rates && d.rates[val]; if (!f) throw 0; setQ({ state: 'ready', f: f, date: d.time_last_update_utc });
+      }).catch(function () { setQ({ state: 'offline' }); });
+    }
+    function convert() {
+      A.commit(function (x) { L.convertState(x, q.f, val); }); L.setCurrency(val);
+      stat('currency-switch-' + val, true); A.say('Switched to ' + L.CURRENCIES[val].name + (/s$/.test(L.CURRENCIES[val].name) ? '' : 's')); A.back();
+    }
+    var title = first ? 'Which currency do you use?' : 'Change currency';
+    var sub = first ? 'Budge shows every amount in this currency. You can change it later in Profile.' : 'Every amount in Budge converts at today’s exchange rate.';
+    var body;
+    if (q && q.state === 'ready') {
+      var amt = b ? L.planTotal(b) : 0, u = b ? unitWord(b.rhythm) : '';
+      var before = N(amt), after = inCurrency(val, function () { return N(L.m2(amt * q.f)); });
+      var big = q.f < 1 ? [val, 1 / q.f, from] : [from, q.f, val];
+      var rate = inCurrency(big[0], function () { return N(1); }) + ' = ' + inCurrency(big[2], function () { return N(big[1] < 100 ? Math.round(big[1] * 100) / 100 : Math.round(big[1])); });
+      body = html`<div class="cur-preview">
+        ${b && html`<div class="cur-from num">${before}${u ? ' a ' + u : ''}</div><div class="cur-arrow" aria-hidden="true">↓</div><div class="cur-to num">${after}${u ? ' a ' + u : ''}</div>`}
+        <div class="t-s muted">Today’s rate: <span class="num">${rate}</span></div>
+        <div class="t-s muted">Your budget, allocations, past purchases and events all convert at this rate.</div>
+      </div>`;
+    } else if (q && q.state === 'offline') {
+      body = html`<div class="cur-off"><${Icon} n="warn" size=${20} color="var(--warning)" />
+        <div><div class="t-label">Connect to the internet to switch</div><div class="t-s muted" style=${{ marginTop: '4px' }}>Budge needs today’s exchange rate so your amounts convert correctly. It only goes online for this one check. Everything else stays on your phone.</div></div></div>`;
+    } else body = html`<${CurrencyWheel} value=${val} onChange=${setVal} />`;
+    var foot = q && q.state === 'ready'
+      ? html`<button class="btn btn-primary" onClick=${convert}>Convert to ${L.CURRENCIES[val].name}</button><button class="btn btn-text" onClick=${function () { setQ(null); }}>Back</button>`
+      : q && q.state === 'offline'
+        ? html`<button class="btn btn-primary" onClick=${go}>Try again</button><button class="btn btn-text" onClick=${function () { setQ(null); }}>Back</button>`
+        : html`<button class="btn btn-primary" disabled=${(!first && val === from) || (q && q.state === 'loading')} onClick=${go}>${q && q.state === 'loading' ? 'Getting today’s rate…' : 'Continue'}</button>`;
+    return html`<div class="layer">
+      <div class="lh pad"><${Back} icon=${first ? 'x' : 'back'} label=${first ? 'Close' : 'Back'} onClick=${A.back} /></div>
+      <div class="lb pad cur-lb"><div><h1 class="h1">${title}</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>${sub}</p></div>${body}</div>
+      <div class="lf pad">${foot}</div>
     </div>`;
   }
   function FeedbackLayer(p) {
@@ -1076,7 +1236,7 @@
   var STILL = false; try { STILL = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { }
   // A number that rolls to its new value instead of jumping.
   function Count(p) {
-    var v = Math.round(p.v || 0), fmt = p.fmt || N, sv = useState(v), shown = sv[0], setShown = sv[1], last = useRef(v);
+    var v = L.m2(p.v || 0), fmt = p.fmt || N, sv = useState(v), shown = sv[0], setShown = sv[1], last = useRef(v);
     useEffect(function () {
       if (p.hold) return;
       var from = last.current, to = v; last.current = v;
@@ -1084,7 +1244,7 @@
       if (STILL) { setShown(to); return; }
       var t0 = 0, dur = 700, raf;
       function step(t) { if (!t0) t0 = t; var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-        setShown(Math.round(from + (to - from) * e)); if (k < 1) raf = requestAnimationFrame(step); }
+        setShown(L.m2(from + (to - from) * e)); if (k < 1) raf = requestAnimationFrame(step); }
       raf = requestAnimationFrame(step);
       return function () { cancelAnimationFrame(raf); setShown(to); };
     }, [v, p.hold]);
@@ -1272,7 +1432,7 @@
     var stt = useState(orig ? N(orig.total) : ''), total = stt[0], setTotal = stt[1];
     var si = useState(orig ? clone(orig.items || []) : []), items = si[0], setItems = si[1];
     var cf = useState(false), confirming = cf[0], setConfirming = cf[1];
-    var tn = +digits(total) || 0, planned = items.reduce(function (a, it) { return a + (+it.amount || 0); }, 0);
+    var tn = money(total), planned = items.reduce(function (a, it) { return a + (+it.amount || 0); }, 0);
     function setItem(i, k, v) { var n = items.slice(); n[i] = Object.assign({}, n[i]); n[i][k] = v; setItems(n); }
     function addItem(nm) { setItems(items.concat([{ id: L.uid(), name: nm || '', amount: 0 }])); setTimeout(function () { var el = document.getElementById('ei-' + items.length); if (el) el.focus(); }, 40); }
     function save() {
@@ -1297,12 +1457,12 @@
             ${multi && html`<span class="t-s muted">to</span><input type="date" class="field" aria-label="End date" min=${date} value=${end} onChange=${function (e) { setEnd(e.target.value); }} />`}</div>
           <button class="link" style=${{ padding: 0, alignSelf: 'flex-start' }} onClick=${function () { setMulti(!multi); }}>${multi ? 'Just one day' : 'More than one day?'}</button></div>
         <label class="fld"><span class="t-label">How much can you spend on it?</span>
-          <input class="field num" inputmode="numeric" placeholder="e.g. ₦150,000" value=${total} onInput=${function (e) { var v = +digits(e.target.value) || 0; setTotal(v ? N(v) : ''); }} /></label>
+          <input class="field num" inputmode=${numMode()} placeholder=${'e.g. ' + N(L.S(150000))} value=${total} onInput=${function (e) { setTotal(typing(e.target.value)); }} /></label>
         <div class="fld"><span class="t-label">Planned costs <span class="muted fw-r">Optional</span></span>
           ${items.map(function (it, i) {
             return html`<div class="ev-item" key=${it.id}>
               <input id=${'ei-' + i} class="field" maxlength="24" placeholder="e.g. Aso-ebi" value=${it.name} onInput=${function (e) { setItem(i, 'name', e.target.value); }} />
-              <input class="field num ev-amt" inputmode="numeric" placeholder="₦0" value=${it.amount ? N(it.amount) : ''} onInput=${function (e) { setItem(i, 'amount', Math.min(+digits(e.target.value) || 0, 99999999)); }} />
+              <input class="field num ev-amt" inputmode="numeric" placeholder=${N(0)} value=${it.amount ? N(it.amount) : ''} onInput=${function (e) { setItem(i, 'amount', Math.min(money(e.target.value.replace(/\..*$/, '')), 99999999)); }} />
               <button class="icon-btn" aria-label=${'Remove ' + (it.name || 'cost')} onClick=${function () { setItems(items.filter(function (_, j) { return j !== i; })); }}><${Icon} n="x" size=${16} color="var(--muted)" /></button>
             </div>`;
           })}
@@ -1315,7 +1475,7 @@
       <div class="lf pad">
         ${confirming ? html`<div class="card" style=${{ display: 'flex', flexDirection: 'column', gap: '10px' }}><div class="t-s">Delete this event? Its purchases move to your everyday spending.</div>
             <div class="btn-row"><button class="btn btn-outline btn-sm" onClick=${function () { setConfirming(false); }}>Cancel</button><button class="btn btn-danger btn-sm" onClick=${del}>Delete</button></div></div>`
-          : html`<button class="btn btn-primary" disabled=${!name.trim() || tn < 1000 || !date} onClick=${save}>${orig ? 'Save changes' : 'Create event'}</button>
+          : html`<button class="btn btn-primary" disabled=${!name.trim() || tn < L.S(1000) || !date} onClick=${save}>${orig ? 'Save changes' : 'Create event'}</button>
             ${orig && html`<button class="btn btn-text neg" onClick=${function () { setConfirming(true); }}><${Icon} n="trash" size=${18} />Delete event</button>`}`}
       </div>
     </div>`;
@@ -2101,6 +2261,10 @@
           <div class="grow"><div class="name">Allocations</div><div class="meta">${pots} allocation${pots === 1 ? '' : 's'}</div></div>
           <div class="amt num">${N(total)}</div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
       </div></div>`}
+      <div><div class="group-title">Money</div><div class="group">
+        <button class="row" onClick=${function () { A.open({ type: 'currency', mode: 'switch', k: Date.now() }); }}><div class="grow"><div class="name">Currency</div><div class="meta">${L.cur().name}</div></div>
+          <div class="amt">${L.cur().sym} ${L.cur().code}</div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+      </div></div>
       <div><div class="group-title">Reminders</div><div class="group">
         <div class="row"><div class="grow"><div class="name">Daily reminder</div><div class="meta">Only on days you haven’t logged anything</div></div>
           <${Toggle} label="Daily reminder" on=${st.reminder.on} onChange=${function (v) { A.commit(function (x) { x.reminder.on = v; }); }} /></div>
@@ -2199,7 +2363,7 @@
     var open = open0.concat(L.allCats().filter(function (x) { return c[x.id] > 0 && open0.indexOf(x.id) < 0; }).map(function (x) { return x.id; }));
     var np = useState(false), adding = np[0], setAdding = np[1];
     var total = p.total != null ? p.total : L.totalBudget(c), allocated = L.totalBudget(c);
-    function setV(id, v) { var n = Object.assign({}, c); n[id] = Math.min(+digits(v) || 0, 99999999); p.onChange(n); if (p.onEdit) p.onEdit(id); }
+    function setV(id, v) { var n = Object.assign({}, c); n[id] = Math.min(money(String(v).replace(/\..*$/, '')), 99999999); p.onChange(n); if (p.onEdit) p.onEdit(id); }
     function focus(id) { setTimeout(function () { var el = document.getElementById('sp-' + id); if (el) el.focus(); }, 40); }
     function remove(id) {
       var prevC = c, prevOpen = open, n = Object.assign({}, c), sp = p.spent && p.spent[id];
@@ -2209,8 +2373,8 @@
     var rest = L.allCats().filter(function (x) { return open.indexOf(x.id) < 0; });
     return html`<div style=${{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <label class="card total-card" for="budget-total"><span class="t-s muted">Budget<span class="t-cap total-edit">${p.onTotal ? 'Tap to change' : ''}</span></span>
-        <span class="total-wrap">${p.onTotal ? html`<input id="budget-total" class="total-in num" inputmode="numeric" aria-label="Budget total" value=${total ? N(total) : ''} placeholder="₦0"
-            onInput=${function (e) { var v = Math.min(+digits(e.target.value) || 0, 999999999); p.onTotal(v); }} />`
+        <span class="total-wrap">${p.onTotal ? html`<input id="budget-total" class="total-in num" inputmode="numeric" aria-label="Budget total" value=${total ? N(total) : ''} placeholder=${N(0)}
+            onInput=${function (e) { var v = Math.min(money(e.target.value.replace(/\..*$/, '')), 999999999); p.onTotal(v); }} />`
           : html`<span class="t-title num" style=${{ fontWeight: 600, fontSize: '20px' }}>${N(total)}</span>`}<span class="t-s muted"> ${perUnit(p.unit)}</span></span></label>
       ${open.length === 0 && html`<div class="empty-alloc t-s muted">No allocations yet. Add your first one below, e.g. Food at home or Transport.</div>`}
       ${open.length > 1 && html`<div class="t-cap muted swipe-hint"><${Icon} n="left" size=${14} />Swipe left on an allocation to remove it</div>`}
@@ -2220,7 +2384,7 @@
           return html`<${SwipeRow} key=${id} locked=${open.length <= 1} onRemove=${function () { remove(id); }}><div class="split-row">
             <${CatIcon} id=${id} size=${40} />
             <label class="grow" for=${'sp-' + id}><div class="t-label">${cc.name}</div>${id === 'treats' && html`<div class="t-cap muted">Eating out, snacks, small buys</div>`}${id === 'subs' && html`<div class="t-cap muted">Netflix, Spotify, apps</div>`}</label>
-            <input id=${'sp-' + id} class="money-in" inputmode="numeric" aria-label=${cc.name + ' allocation'} value=${c[id] ? N(c[id]) : ''} placeholder="₦0"
+            <input id=${'sp-' + id} class="money-in" inputmode="numeric" aria-label=${cc.name + ' allocation'} value=${c[id] ? N(c[id]) : ''} placeholder=${N(0)}
               onInput=${function (e) { setV(id, e.target.value); }} />
           </div></${SwipeRow}>`;
         })}
@@ -2261,7 +2425,7 @@
       });
       A.say(scope === 'week' ? 'Saved for this ' + u : 'Saved for every ' + u); A.back();
     }
-    var tn = +digits(draft) || 0;
+    var tn = money(draft);
     return html`<div class="layer">
       <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Budget and allocations</div></div>
       <div class="lb pad">
@@ -2272,7 +2436,7 @@
         <${BalanceBar} cats=${cats} total=${total} focus=${focus} onCats=${function (n) { setCats(n); setK(k + 1); }} onTotal=${setTotal} />
         ${!p.plan && html`<div class="scope"><span class="t-cap muted">Apply to</span>
           <${Seg} value=${scope} onChange=${setScope} options=${[{ v: 'week', label: 'This ' + u + ' only' }, { v: 'all', label: 'Every ' + u }]} /></div>`}
-        <button class="btn btn-primary" disabled=${over || total < 1000 || L.totalBudget(cats) <= 0} onClick=${save}>${fixLabel(cats, total, 'Save')}</button>
+        <button class="btn btn-primary" disabled=${over || total < L.S(1000) || L.totalBudget(cats) <= 0} onClick=${save}>${fixLabel(cats, total, 'Save')}</button>
       </div>
     </div>`;
   }
@@ -2290,7 +2454,7 @@
     var steps = ['type', 'amount', 'how', 'split'].concat(first ? ['reminder'] : []);
     var cur = steps[Math.min(step, steps.length - 1)], isLast = step >= steps.length - 1;
     function onKey(k) { setTotal(applyKey(total, k)); }
-    useKeys(onKey, function () { if (n >= 1000) toSplit(); }, cur === 'amount');
+    useKeys(onKey, function () { if (n >= L.S(1000)) toSplit(); }, cur === 'amount');
     function next() { setStep(step + 1); }
     var sHow = useState(null), how = sHow[0], setHow = sHow[1];
     function toSplit() { next(); }
@@ -2301,7 +2465,7 @@
       A.commit(function (x) { x.budgets = [b]; x.mainBid = b.id; x.lastBid = b.id; x.reminder = r; x.reminderAsked = true; x.sample = false; x.notifCardOff = true; });
       A.sfx('chime'); A.say('Your budget is ready'); stat('budget-created-' + kind, true); A.home();
     }
-    var cta = html`<button class="btn btn-primary" disabled=${!cats || L.totalBudget(cats) <= 0 || L.totalBudget(cats) > n || n < 1000} onClick=${finish}>${fixLabel(cats, n, 'Start budgeting')}</button>`;
+    var cta = html`<button class="btn btn-primary" disabled=${!cats || L.totalBudget(cats) <= 0 || L.totalBudget(cats) > n || n < L.S(1000)} onClick=${finish}>${fixLabel(cats, n, 'Start budgeting')}</button>`;
     var head = html`<div class="lh pad">
       <${Back} icon=${step === 0 ? 'x' : 'back'} label=${step === 0 ? 'Close' : 'Back'} onClick=${function () { if (step === 0) A.close(); else setStep(step - 1); }} />
       <div class="steps" aria-label=${'Step ' + (step + 1) + ' of ' + steps.length}>${steps.map(function (x, i) { return html`<i class=${i <= step ? 'on' : ''}></i>`; })}</div>
@@ -2321,7 +2485,7 @@
         })}</div>`;
       foot = html`<button class="btn btn-primary" onClick=${next}>Continue</button>`;
     } else if (cur === 'amount') {
-      var quick = kind === 'month' ? [150000, 200000, 300000, 500000] : [30000, 50000, 80000, 100000];
+      var quick = L.cur().dp ? (kind === 'month' ? [400, 600, 1000, 1500] : [100, 150, 200, 300]) : kind === 'month' ? [150000, 200000, 300000, 500000] : [30000, 50000, 80000, 100000];
       body = html`<div class="lb lb-amount">
         <div class="pad"><h1 class="h1">How much can you spend each ${u}?</h1>
           <p class="t-s muted" style=${{ margin: '8px 0 0' }}>Leave out rent and money you’re putting away. You can change it any time.</p></div>
@@ -2330,7 +2494,7 @@
         </div>
         <div class="pad"><${Keypad} onKey=${onKey} /></div>
       </div>`;
-      foot = html`<button class="btn btn-primary" disabled=${n < 1000} onClick=${toSplit}>Continue</button>`;
+      foot = html`<button class="btn btn-primary" disabled=${n < L.S(1000)} onClick=${toSplit}>Continue</button>`;
     } else if (cur === 'how') {
       body = html`<div class="lb pad"><div><h1 class="h1">How do you want to split it?</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>Allocations are what you can spend on each thing every ${u}, like food or transport. They add up to your ${N(n)}.</p></div>
         <div class="opts" role="radiogroup">
@@ -2347,7 +2511,7 @@
         <${SplitEditor} key=${'s' + how} cats=${cats || {}} total=${n} onTotal=${function (v) { setTotal(v ? String(v) : ''); }} unit=${kind} onChange=${setCats} onEdit=${setFocusId} st=${st} A=${A} /></div>`;
       var splitOver = cats && L.totalBudget(cats) > n, noneYet = !cats || L.totalBudget(cats) <= 0;
       foot = html`<${BalanceBar} cats=${cats || {}} total=${n} focus=${focusId} onCats=${setCats} onTotal=${function (v) { setTotal(String(v)); }} />
-        ${isLast ? cta : html`<button class="btn btn-primary" disabled=${splitOver || noneYet || n < 1000} onClick=${next}>${noneYet ? 'Add an allocation to continue' : fixLabel(cats, n, 'Continue')}</button>`}`;
+        ${isLast ? cta : html`<button class="btn btn-primary" disabled=${splitOver || noneYet || n < L.S(1000)} onClick=${next}>${noneYet ? 'Add an allocation to continue' : fixLabel(cats, n, 'Continue')}</button>`}`;
     } else if (notifyState() === 'default' || notifyState() === 'install') {
       var ios = notifyState() === 'install';
       body = html`<div class="lb pad">
@@ -2600,7 +2764,7 @@
       A.say('Renamed to ' + v);
     }
     function saveBudget() {
-      var x = Math.min(+digits(draft) || 0, 99999999);
+      var x = Math.min(money(draft), 99999999);
       A.commitB(b.id, function (bb) { bb.cats[id] = x; });
       setEditing(false); A.say(x ? c.name + ' allocation is now ' + N(x) : c.name + ' allocation removed');
     }
@@ -2627,8 +2791,8 @@
         ${!isWork && html`<div class="group">
           ${editing ? html`<div class="confirm">
             <label class="t-s muted" for="cat-budget">${potLabel}</label>
-            <input id="cat-budget" class="field num" style=${{ background: 'var(--surface)' }} inputmode="numeric" placeholder="₦0" value=${draft}
-              onInput=${function (e) { var d = +digits(e.target.value) || 0; setDraft(d ? N(d) : ''); }} />
+            <input id="cat-budget" class="field num" style=${{ background: 'var(--surface)' }} inputmode=${numMode()} placeholder=${N(0)} value=${draft}
+              onInput=${function (e) { setDraft(typing(e.target.value)); }} />
             <div class="btn-row"><button class="btn btn-secondary btn-sm" style=${{ background: 'var(--surface)' }} onClick=${function () { setEditing(false); }}>Cancel</button>
               <button class="btn btn-dark btn-sm" onClick=${saveBudget}>Save</button></div>
           </div>` : html`<button class="row" onClick=${function () { A.open({ type: 'split' }); }}>
@@ -2709,7 +2873,7 @@
     var sDay = useState(orig ? L.entryDay(orig) : today), day = sDay[0], setDay = sDay[1];
     var cf = useState(false), confirming = cf[0], setConfirming = cf[1];
     if (!orig) return html`<div class="layer"><div class="lh pad"><${Back} onClick=${A.back} /></div><div class="lb pad"><${Empty} title="This record was deleted" /></div></div>`;
-    var n = +digits(amt) || 0, isIn = orig.type === 'in', b = L.mainBudget(st), sp = b ? L.status(st, b, p.now).pots : [];
+    var n = money(amt), isIn = orig.type === 'in', b = L.mainBudget(st), sp = b ? L.status(st, b, p.now).pots : [];
     function save() {
       A.commit(function (x) {
         x.entries.forEach(function (e) {
@@ -2727,7 +2891,7 @@
       <div class="lb pad">
         <label class="fld"><span class="t-label">Amount</span>
           <input id="edit-amt" class="field field-big num" inputmode="numeric" value=${amt}
-            onInput=${function (e) { var d = +digits(e.target.value) || 0; setAmt(d ? N(d) : ''); }} /></label>
+            onInput=${function (e) { setAmt(typing(e.target.value)); }} /></label>
         ${!isIn && html`<div class="fld"><span class="t-label">Allocation</span><${AllocPick} value=${catId} pots=${sp} onChange=${setCat} /></div>`}
         <label class="fld"><span class="t-label">What was it? <span class="muted fw-r">Optional</span></span>
           <input id="edit-note" class="field" maxlength="40" value=${note} onInput=${function (e) { setNote(e.target.value); }} /></label>
@@ -2959,9 +3123,10 @@
     if (!ready) body = html`<div class="splash"><${Logo} size=${64} /></div>`;
     else {
       var screen, tabbar = null;
+      L.setCurrency(st.currency || 'NGN');
       EVN = {}; (st.events || []).forEach(function (ev) { var it = {}; (ev.items || []).forEach(function (x) { it[x.id] = x.name; }); EVN[ev.id] = { name: ev.name, items: it }; });
       if (!budget && (st.events || []).length) screen = html`<${EventsHome} st=${st} A=${A} now=${now} />`;
-      else if (!budget) screen = html`<${Onboarding} A=${A} />`;
+      else if (!budget) screen = html`<${Onboarding} A=${A} st=${st} />`;
       else {
         var t = nav.tab;
         screen = t === 'home' ? html`<${BudgetHome} st=${st} b=${budget} now=${now} A=${A} covered=${!!layer} />`
@@ -2993,6 +3158,8 @@
         else if (layer.type === 'suggest' && budget) lay = html`<${SuggestLayer} st=${st} b=${budget} A=${A} now=${now} />`;
         else if (layer.type === 'recap' && budget) lay = html`<${RecapLayer} st=${st} b=${budget} A=${A} />`;
         else if (layer.type === 'syncGuide') lay = html`<${SyncGuide} A=${A} />`;
+        else if (layer.type === 'thanks') lay = html`<${Thanks} A=${A} />`;
+        else if (layer.type === 'currency') lay = html`<${CurrencyLayer} key=${layer.k || 'c'} st=${st} A=${A} mode=${layer.mode} then=${layer.then} />`;
         else if (layer.type === 'whatsnew') lay = html`<${WhatsNew} A=${A} onSeen=${function () { setNewUnseen(false); }} />`;
         else if (layer.type === 'feedback') lay = html`<${FeedbackLayer} st=${st} A=${A} />`;
         else if (layer.type === 'edit') lay = html`<${EditEntry} key=${layer.id} st=${st} now=${now} A=${A} id=${layer.id} />`;
