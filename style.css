@@ -862,3 +862,17 @@ button.row:active, .ev-card:active, .ev-prompt-main:active { transform: scale(.9
 @keyframes exFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes nudgePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(18, 183, 106, 0); } 50% { box-shadow: 0 0 0 6px rgba(18, 183, 106, .18); } }
 @media (prefers-reduced-motion: reduce) { .first-ex, .first .btn { animation: none; } }
+
+/* Moving data between devices */
+.sg-card { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.sg-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sg-steps li { display: flex; gap: 10px; align-items: flex-start; font-size: var(--fs-s); line-height: 1.45; color: var(--ink-2); }
+.sg-n { flex: none; width: 22px; height: 22px; border-radius: 999px; background: var(--emerald-soft); color: var(--emerald-deep); font-size: var(--fs-xs); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+.sg-note { display: flex; gap: 8px; align-items: flex-start; }
+.sg-note svg { flex: none; margin-top: 2px; }
+.sg-warn { display: flex; gap: 10px; align-items: flex-start; background: var(--warning-soft); border-radius: 16px; padding: 12px 14px; }
+.sg-warn svg { flex: none; margin-top: 1px; }
+.sync-card { gap: 10px; }
+.sync-ic { width: 52px; height: 52px; border-radius: 16px; background: var(--emerald-soft); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.sync-short { margin: 4px 0 2px; width: 100%; }
+.sync-card .btn-primary { margin-top: 8px; }

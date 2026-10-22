@@ -1145,6 +1145,11 @@
   }
   // ================= desktop =================
   var QR = {"n": 29, "d": "M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM10 0h1v1h-1zM12 0h1v1h-1zM13 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM16 0h1v1h-1zM18 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM25 0h1v1h-1zM26 0h1v1h-1zM27 0h1v1h-1zM28 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM14 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM17 1h1v1h-1zM19 1h1v1h-1zM22 1h1v1h-1zM28 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM12 2h1v1h-1zM13 2h1v1h-1zM14 2h1v1h-1zM15 2h1v1h-1zM16 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM20 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM25 2h1v1h-1zM26 2h1v1h-1zM28 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM15 3h1v1h-1zM17 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM25 3h1v1h-1zM26 3h1v1h-1zM28 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM15 4h1v1h-1zM17 4h1v1h-1zM19 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM28 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM9 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM16 5h1v1h-1zM17 5h1v1h-1zM22 5h1v1h-1zM28 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM25 6h1v1h-1zM26 6h1v1h-1zM27 6h1v1h-1zM28 6h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM13 7h1v1h-1zM18 7h1v1h-1zM1 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM12 8h1v1h-1zM13 8h1v1h-1zM17 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM25 8h1v1h-1zM27 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM5 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM15 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM23 9h1v1h-1zM24 9h1v1h-1zM25 9h1v1h-1zM26 9h1v1h-1zM27 9h1v1h-1zM1 10h1v1h-1zM3 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM13 10h1v1h-1zM14 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM21 10h1v1h-1zM22 10h1v1h-1zM23 10h1v1h-1zM26 10h1v1h-1zM2 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM25 11h1v1h-1zM28 11h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM14 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM25 12h1v1h-1zM27 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM10 13h1v1h-1zM12 13h1v1h-1zM15 13h1v1h-1zM22 13h1v1h-1zM24 13h1v1h-1zM26 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM0 14h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM10 14h1v1h-1zM12 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM25 14h1v1h-1zM28 14h1v1h-1zM0 15h1v1h-1zM4 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM15 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM24 15h1v1h-1zM25 15h1v1h-1zM26 15h1v1h-1zM27 15h1v1h-1zM28 15h1v1h-1zM2 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM9 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM20 16h1v1h-1zM23 16h1v1h-1zM25 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM0 17h1v1h-1zM4 17h1v1h-1zM5 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM24 17h1v1h-1zM26 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM3 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM7 18h1v1h-1zM8 18h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM23 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM28 18h1v1h-1zM0 19h1v1h-1zM1 19h1v1h-1zM3 19h1v1h-1zM8 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM24 19h1v1h-1zM26 19h1v1h-1zM27 19h1v1h-1zM28 19h1v1h-1zM0 20h1v1h-1zM1 20h1v1h-1zM2 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM7 20h1v1h-1zM8 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM26 20h1v1h-1zM8 21h1v1h-1zM10 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM20 21h1v1h-1zM24 21h1v1h-1zM25 21h1v1h-1zM26 21h1v1h-1zM0 22h1v1h-1zM1 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM19 22h1v1h-1zM20 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM26 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM17 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM27 23h1v1h-1zM0 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM14 24h1v1h-1zM16 24h1v1h-1zM18 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM21 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1zM28 24h1v1h-1zM0 25h1v1h-1zM2 25h1v1h-1zM3 25h1v1h-1zM4 25h1v1h-1zM6 25h1v1h-1zM8 25h1v1h-1zM9 25h1v1h-1zM10 25h1v1h-1zM11 25h1v1h-1zM12 25h1v1h-1zM13 25h1v1h-1zM17 25h1v1h-1zM18 25h1v1h-1zM23 25h1v1h-1zM26 25h1v1h-1zM27 25h1v1h-1zM0 26h1v1h-1zM2 26h1v1h-1zM3 26h1v1h-1zM4 26h1v1h-1zM6 26h1v1h-1zM9 26h1v1h-1zM13 26h1v1h-1zM14 26h1v1h-1zM15 26h1v1h-1zM18 26h1v1h-1zM20 26h1v1h-1zM21 26h1v1h-1zM23 26h1v1h-1zM24 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h1v1h-1zM10 27h1v1h-1zM13 27h1v1h-1zM14 27h1v1h-1zM15 27h1v1h-1zM21 27h1v1h-1zM24 27h1v1h-1zM25 27h1v1h-1zM26 27h1v1h-1zM28 27h1v1h-1zM0 28h1v1h-1zM1 28h1v1h-1zM2 28h1v1h-1zM3 28h1v1h-1zM4 28h1v1h-1zM5 28h1v1h-1zM6 28h1v1h-1zM9 28h1v1h-1zM12 28h1v1h-1zM14 28h1v1h-1zM18 28h1v1h-1zM20 28h1v1h-1zM22 28h1v1h-1zM23 28h1v1h-1zM24 28h1v1h-1z"}, LIVE_URL = 'https://dvn019.github.io/budge/';
+  function useDeskNow() { try { return window.matchMedia('(min-width: 1024px)').matches; } catch (e) { return false; } }
+  function onComputer() { try { return window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches; } catch (e) { return false; } }
+  // The sync tip shows once per device (kept outside the budget data, so restoring a backup doesn't hide it).
+  function syncTipSeen() { try { return localStorage.getItem('budge-sync-tip') === '1'; } catch (e) { return true; } }
+  function markSyncTip() { try { localStorage.setItem('budge-sync-tip', '1'); } catch (e) { } }
   function useDesk() {
     var mq = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1024px)') : null;
     var s = useState(mq ? mq.matches : false);
@@ -1933,9 +1938,22 @@
       }).then(function () { A.say('Sent. Check your notifications'); stat('test-notification', true); }, function () { A.say('Couldn’t send a notification'); });
     }
     function exportData() {
-      var blob = new Blob([JSON.stringify(st, null, 2)], { type: 'application/json' });
-      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'budge-backup-' + L.dkey(Date.now()) + '.json';
+      var name = 'budge-backup-' + L.dkey(Date.now()) + '.json', text = JSON.stringify(st, null, 2);
+      var blob = new Blob([text], { type: 'application/json' });
+      stat('backup-save', true);
+      // On phones, open the share sheet so the file can go straight to AirDrop, WhatsApp or email.
+      try {
+        var file = new File([text], name, { type: 'application/json' });
+        if (!useDeskNow() && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], title: 'Budge backup' }).catch(function (e) { if (e && e.name !== 'AbortError') download(); });
+          return;
+        }
+      } catch (e) { }
+      download();
+      function download() {
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
       document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      }
     }
     function importData(e) {
       var f = e.target.files && e.target.files[0]; if (!f) return;
@@ -1958,8 +1976,9 @@
         <button class="row" onClick=${function () { A.open({ type: 'feedback' }); stat('feedback-open', true); }}><div class="grow"><div class="name">Send feedback</div><div class="meta">Ideas, bugs, anything. Takes a minute.</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
       </div></div>`}
       <div><div class="group-title">Your data</div><div class="group">
-        <button class="row" onClick=${exportData}><div class="grow"><div class="name">Save a backup</div><div class="meta">Download a file with everything</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
-        <button class="row" onClick=${function () { fileRef.current.click(); }}><div class="grow"><div class="name">Restore a backup</div><div class="meta">Replaces what’s on this phone</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+        <button class="row" onClick=${exportData}><div class="grow"><div class="name">Save a backup</div><div class="meta">A file with everything in Budge</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+        <button class="row" onClick=${function () { fileRef.current.click(); }}><div class="grow"><div class="name">Restore a backup</div><div class="meta">Replaces what’s on this device</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+        <button class="row" onClick=${function () { A.open({ type: 'syncGuide' }); }}><div class="grow"><div class="name">Move your data to another device</div><div class="meta">Step by step for iPhone, Android, Mac and Windows</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
         <input ref=${fileRef} type="file" accept="application/json,.json" style=${{ display: 'none' }} onChange=${importData} />
         <${Confirm} label="Start over" danger=${true} meta="Delete your budget and every record" question="Delete everything and start again?" yes="Delete all" onYes=${A.startOver} />
       </div></div>
@@ -1968,6 +1987,64 @@
   function usePerm() {
     var s = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
     return { v: s[0], set: s[1] };
+  }
+  // Moving data between devices: Budge keeps data on each device, so a backup file carries it across.
+  function guessOS() {
+    var u = navigator.userAgent || '';
+    if (isIOS()) return 'ios';
+    if (/android/i.test(u)) return 'android';
+    if (/mac/i.test(u)) return 'mac';
+    return 'win';
+  }
+  var SYNC_STEPS = {
+    ios: {
+      save: ['Open Budge and go to Profile → Save a backup.', 'The share sheet opens. Pick AirDrop to send it to your Mac, or WhatsApp or Mail to send it to yourself. Or tap Save to Files.'],
+      restore: ['Get the backup file onto this iPhone. Open it from AirDrop, WhatsApp or Mail and tap Save to Files.', 'Open Budge and go to Profile → Restore a backup.', 'Tap Browse and pick the file that starts with budge-backup.'],
+      note: 'If Budge is on your Home Screen, restore inside that app, not in Safari. They keep separate data.'
+    },
+    android: {
+      save: ['Open Budge and go to Profile → Save a backup.', 'Share it to WhatsApp, Gmail, Google Drive or Quick Share. If no share options appear, it saves to your Downloads folder.'],
+      restore: ['Get the backup file onto this phone: download it from WhatsApp, Gmail or Drive, or accept it through Quick Share.', 'Open Budge and go to Profile → Restore a backup.', 'Open Downloads and pick the file that starts with budge-backup.'],
+      note: 'If Budge is installed on your home screen, restore inside that app, not in Chrome.'
+    },
+    mac: {
+      save: ['Open Budge and go to Profile → Save a backup.', 'The file saves to your Downloads folder. AirDrop it to your iPhone, or send it to yourself by email or WhatsApp.'],
+      restore: ['Get the backup file onto this Mac. AirDrop from your iPhone puts it straight into Downloads.', 'Open Budge and go to Profile → Restore a backup.', 'Pick the file that starts with budge-backup from Downloads.'],
+      note: ''
+    },
+    win: {
+      save: ['Open Budge and go to Profile → Save a backup.', 'The file saves to your Downloads folder. Send it to your phone by email, WhatsApp, Google Drive or Phone Link.'],
+      restore: ['Get the backup file onto this computer. Download it from email, WhatsApp Web or Google Drive.', 'Open Budge and go to Profile → Restore a backup.', 'Pick the file that starts with budge-backup from Downloads.'],
+      note: ''
+    }
+  };
+  function SyncGuide(p) {
+    var A = p.A, so = useState(guessOS()), os = so[0], setOs = so[1], g = SYNC_STEPS[os];
+    useEffect(function () { stat('sync-guide-open', true); }, []);
+    function steps(list) { return html`<ol class="sg-steps">${list.map(function (t, i) { return html`<li key=${i}><span class="sg-n num">${i + 1}</span><span>${t}</span></li>`; })}</ol>`; }
+    return html`<div class="layer">
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Move your data</div></div>
+      <div class="lb pad">
+        <div class="t-s muted">Budge keeps your data on each device, so phones and computers don’t sync on their own. To carry it across, save a backup on one device and restore it on the other.</div>
+        <${Seg} full=${true} value=${os} onChange=${setOs} options=${[{ v: 'ios', label: 'iPhone' }, { v: 'android', label: 'Android' }, { v: 'mac', label: 'Mac' }, { v: 'win', label: 'Windows' }]} />
+        <div class="sg-card"><div class="t-title">Save from this device</div>${steps(g.save)}</div>
+        <div class="sg-card"><div class="t-title">Restore on this device</div>${steps(g.restore)}</div>
+        ${g.note && html`<div class="t-s muted sg-note"><${Icon} n="tip" size=${16} />${g.note}</div>`}
+        <div class="sg-warn"><${Icon} n="warn" size=${18} color="var(--warning)" /><div class="t-s">Restoring replaces everything on that device. It doesn’t merge. Always restore your newest backup.</div></div>
+      </div>
+    </div>`;
+  }
+  function SyncTip(p) {
+    return html`<div class="modal-wrap wn-modal"><div class="scrim" onClick=${p.close}></div>
+      <div class="wn-card sync-card" role="dialog" aria-label="Using Budge on more than one device?">
+        <span class="sync-ic"><${Icon} n="wallet" size=${26} color="var(--emerald-deep)" /></span>
+        <h2 class="h2" style=${{ margin: 0 }}>Using Budge on more than one device?</h2>
+        <div class="t-s muted">Your data stays on each device, so your phone and computer don’t sync on their own.</div>
+        <ol class="sg-steps sync-short"><li><span class="sg-n num">1</span><span>Save a backup on the device with your data.</span></li><li><span class="sg-n num">2</span><span>Restore it on the other one.</span></li></ol>
+        <div class="t-cap muted">Both are in Profile → Your data.</div>
+        <button class="btn btn-primary" onClick=${p.guide}>Show me how</button>
+        <button class="btn btn-text" onClick=${p.close}>Got it</button>
+      </div></div>`;
   }
   function isStandalone() { try { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } }
   function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
@@ -2712,6 +2789,7 @@
     var sToast = useState(null), toast = sToast[0], setToast = sToast[1];
     var sNotif = useState(false), notif = sNotif[0], setNotif = sNotif[1];
     var sBdg = useState(null), bdg = sBdg[0], setBdg = sBdg[1];
+    var sSync = useState(false), syncTip = sSync[0], setSyncTip = sSync[1];
     var sTick = useState(0), setTick = sTick[1];
     var sView = useState({ unit: null, offset: 0 }), view = sView[0], setView = sView[1];
     var sIdx = useState(null), rIdx = sIdx[0], setIdx = sIdx[1];
@@ -2751,6 +2829,15 @@
       var quiet = !st.earned || st.sample;
       commit(function (x) { x.earned = Object.assign({}, x.earned || {}); fresh.forEach(function (f) { x.earned[f.id] = L.dkey(now); }); });
       if (!quiet) { setTimeout(function () { SFX.play('chime'); setBdg({ id: fresh[0].id, fresh: true }); }, 700); fresh.forEach(function (f) { stat('badge-' + f.id, true); }); }
+    });
+    // Using Budge on more than one device? Once on a computer, or once on a phone after a week of use.
+    useEffect(function () {
+      if (!ready || !budget || st.sample || syncTip || syncTipSeen() || layer || bdg || justUpdated) return;
+      var first = st.entries.reduce(function (m, e) { return Math.min(m, e.ts || Infinity); }, Infinity);
+      var due = onComputer() || (first !== Infinity && now - first >= 7 * DAY);
+      if (!due) return;
+      var t = setTimeout(function () { markSyncTip(); setSyncTip(true); stat('sync-tip-shown', true); }, 1500);
+      return function () { clearTimeout(t); };
     });
     // The number on the app icon: 1 when nothing is logged today (installed app only).
     useEffect(function () {
@@ -2905,6 +2992,7 @@
         else if (layer.type === 'track') lay = html`<${TrackSetup} A=${A} now=${now} />`;
         else if (layer.type === 'suggest' && budget) lay = html`<${SuggestLayer} st=${st} b=${budget} A=${A} now=${now} />`;
         else if (layer.type === 'recap' && budget) lay = html`<${RecapLayer} st=${st} b=${budget} A=${A} />`;
+        else if (layer.type === 'syncGuide') lay = html`<${SyncGuide} A=${A} />`;
         else if (layer.type === 'whatsnew') lay = html`<${WhatsNew} A=${A} onSeen=${function () { setNewUnseen(false); }} />`;
         else if (layer.type === 'feedback') lay = html`<${FeedbackLayer} st=${st} A=${A} />`;
         else if (layer.type === 'edit') lay = html`<${EditEntry} key=${layer.id} st=${st} now=${now} A=${A} id=${layer.id} />`;
@@ -2936,6 +3024,7 @@
             <button class="btn btn-primary" onClick=${function () { markSeen(); setNewUnseen(false); setJustUpdated(null); }}>Got it</button>
             <button class="btn btn-text" onClick=${function () { markSeen(); setNewUnseen(false); setJustUpdated(null); A.open({ type: 'whatsnew' }); }}>See all updates</button>
           </div></div>`}
+        ${syncTip && html`<${SyncTip} close=${function () { setSyncTip(false); }} guide=${function () { setSyncTip(false); A.open({ type: 'syncGuide' }); }} />`}
         ${bdg && html`<${BadgeCard} st=${st} now=${now} id=${bdg.id} fresh=${bdg.fresh} close=${function () { setBdg(null); }} />`}
         ${toast && html`<div class=${cx('toast', toast.undo && 'toast-undo')} key=${toast.k} role="status"><span>${toast.m}</span>
           ${toast.undo && html`<button class="toast-act" onClick=${function () { toast.undo(); setToast(null); }}>Undo</button>`}</div>`}
