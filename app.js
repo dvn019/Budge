@@ -168,7 +168,8 @@
   // ---------- entries ----------
   function entryDay(e) { return dkey(e.ts); }
   function inRange(e, a, b) { var k = entryDay(e); return k >= a && k <= b; }
-  function personalOut(e) { return e.type === 'out' && !e.work; }
+  // Everyday spending: event purchases are kept out of the weekly/monthly budget.
+  function personalOut(e) { return e.type === 'out' && !e.work && !e.event; }
   function sum(list) { var s = 0; for (var i = 0; i < list.length; i++) s += list[i].amount; return s; }
   function catTotals(list) { var o = {}; list.forEach(function (e) { o[e.cat] = (o[e.cat] || 0) + e.amount; }); return o; }
   function byNewest(a, b) { return b.ts - a.ts; }
@@ -528,6 +529,28 @@
     b.done[s.key] = 'applied';
   }
 
+  // ---------- events: a separate plan for a wedding, a trip, a birthday ----------
+  function eventEnd(ev) { return ev.end || ev.date; }
+  function eventStatus(state, ev, now) {
+    var today = dkey(now), end = eventEnd(ev);
+    var ents = state.entries.filter(function (e) { return e.type === 'out' && e.event === ev.id; }).sort(byNewest);
+    var spent = sum(ents), byItem = {};
+    ents.forEach(function (e) { var k = e.eventItem || '_other'; byItem[k] = (byItem[k] || 0) + e.amount; });
+    var planned = (ev.items || []).reduce(function (a, it) { return a + (+it.amount || 0); }, 0);
+    var phase = today < ev.date ? 'upcoming' : today <= end ? 'live' : 'done';
+    return { spent: spent, left: (+ev.total || 0) - spent, planned: planned, byItem: byItem, entries: ents, phase: phase,
+      daysTo: phase === 'upcoming' ? diffDays(today, ev.date) : 0, daysSince: phase === 'done' ? diffDays(end, today) : 0 };
+  }
+  // Events worth showing on Home: coming up, happening, or finished in the last week.
+  function activeEvents(state, now) {
+    return (state.events || []).filter(function (ev) { var s = eventStatus(state, ev, now); return s.phase !== 'done' || s.daysSince <= 7; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  }
+  // Events whose dates include this day (offered when logging).
+  function eventsOn(state, day) {
+    return (state.events || []).filter(function (ev) { return day >= addDays(ev.date, -14) && day <= eventEnd(ev); });
+  }
+
   // ---------- just tracking: suggest a budget from real spending ----------
   function trackInfo(state, b, now) {
     var today = dkey(now), start = b.trackStart || today, days = diffDays(start, today) + 1;
@@ -659,7 +682,7 @@
     daysInMonth: daysInMonth, periodStart: periodStart, periodEnd: periodEnd, shiftPeriod: shiftPeriod,
     rangeLabel: rangeLabel, dayLabel: dayLabel, shortDate: shortDate, weekdayName: weekdayName, timeLabel: timeLabel, hhmm: hhmm, time12: time12,
     naira: naira, short: short, roundTo: roundTo, uid: uid, blankState: blankState, newBudget: newBudget, findBudget: findBudget,
-    unitOf: unitOf, phaseOf: phaseOf, totalBudget: totalBudget, trackInfo: trackInfo, suggestBudget: suggestBudget, frequent: frequent, parseAlert: parseAlert, planTotal: planTotal, periodTotal: periodTotal, setPeriod: setPeriod, raisePeriod: raisePeriod, autoSplit: autoSplit, convertBudgets: convertBudgets, migrate: migrate,
+    unitOf: unitOf, phaseOf: phaseOf, totalBudget: totalBudget, eventEnd: eventEnd, eventStatus: eventStatus, activeEvents: activeEvents, eventsOn: eventsOn, trackInfo: trackInfo, suggestBudget: suggestBudget, frequent: frequent, parseAlert: parseAlert, planTotal: planTotal, periodTotal: periodTotal, setPeriod: setPeriod, raisePeriod: raisePeriod, autoSplit: autoSplit, convertBudgets: convertBudgets, migrate: migrate,
     entryDay: entryDay, personalOut: personalOut, catTotals: catTotals, ofBudget: ofBudget, streak: streak, loggedOn: loggedOn, bestStreak: bestStreak, badges: badges,
     status: status, monthSummary: monthSummary, summarize: summarize, needsRollover: needsRollover, anyRollover: anyRollover,
     rollover: rollover, rolloverAll: rolloverAll, rangeView: rangeView, pattern: pattern, review: review,
@@ -910,8 +933,16 @@
       ${p.children}
     </div>`;
   }
+  var EVN = {}; // event names for list rows, refreshed on every render of the app
+  function EvIcon(p) { var s = p.size || 40; return html`<span class="cat cat-neutral ev-ic" style=${{ width: s + 'px', height: s + 'px' }}><${Icon} n="calendar" size=${Math.round(s * 0.45)} color="var(--ink-2)" /></span>`; }
   function EntryRow(p) {
     var e = p.e, isIn = e.type === 'in';
+    if (e.event) {
+      var ev = EVN[e.event] || { name: 'Event', items: {} }, iname = e.eventItem && ev.items[e.eventItem];
+      return html`<button class="row" onClick=${p.onClick}><${EvIcon} size=${40} />
+        <div class="grow"><div class="name">${e.note || iname || ev.name}</div><div class="meta">${(p.inEvent ? (iname || 'Not planned') : ev.name) + ' · ' + L.timeLabel(e.ts)}</div></div>
+        <div class="amt num">${N(e.amount)}</div></button>`;
+    }
     var name = e.note || (isIn ? 'Money in' : L.cat(e.cat).name);
     var meta = isIn ? (e.source || 'Money in') + ' · ' + L.timeLabel(e.ts)
       : (p.budgetName ? p.budgetName + ' · ' : p.showCat && e.note ? L.cat(e.cat).name + ' · ' : '') + L.timeLabel(e.ts);
@@ -993,6 +1024,7 @@
       <div class="onboard-actions">
         <button class="btn btn-primary" onClick=${function () { A.create(); }}>Set up my budget</button>
         <button class="btn btn-outline" onClick=${function () { A.open({ type: 'track' }); }}>Just track my spending first</button>
+        <button class="btn btn-text ev-entry" onClick=${function () { A.open({ type: 'eventEdit' }); stat('event-new-open', true); }}>Planning for an event? Start there</button>
         ${!PWA && html`<button class="btn btn-text proto-link" onClick=${A.loadSample}>Prototype only: load a sample week</button>`}
       </div>
     </div>`;
@@ -1098,6 +1130,7 @@
         return html`<button class=${cx('side-item', on && 'on')} aria-current=${on ? 'page' : null} onClick=${function () { A.tab(x[0]); }}>
           <${Icon} n=${x[1] + (on && ICONS.ui[x[1] + '-f'] ? '-f' : '')} size=${22} /><span>${x[2]}</span>${(x[0] === 'insights' && p.unseen && !on) || (x[0] === 'settings' && p.newUnseen && !on) ? html`<span class="dot"></span>` : null}</button>`;
       })}</nav>
+      <button class="side-item side-ev" onClick=${function () { A.open({ type: 'events' }); }}><${Icon} n="calendar" size=${22} /><span>Events</span></button>
       <div class="side-foot">
         <div class="t-cap muted">Your data stays on this device.</div>
       </div>
@@ -1113,6 +1146,227 @@
       <button class="icon-btn qr-x" aria-label="Hide" onClick=${function () { try { localStorage.setItem(k, '1'); } catch (e) { } s[1](true); }}><${Icon} n="x" size=${16} color="var(--muted)" /></button>
     </div>`;
   }
+  // ================= events =================
+  var EV_IDEAS = ['Aso-ebi', 'Outfit', 'Gift', 'Transport', 'Hair & makeup', 'Food & drinks', 'Hotel', 'Decorations'];
+  function evWhen(ev, s) {
+    var d = ev.end && ev.end !== ev.date ? L.shortDate(ev.date) + ' – ' + L.shortDate(ev.end) : L.shortDate(ev.date);
+    var t = s.phase === 'upcoming' ? (s.daysTo === 1 ? 'tomorrow' : 'in ' + s.daysTo + ' days') : s.phase === 'live' ? 'happening now' : 'finished';
+    return { date: d, rel: t };
+  }
+  function EventCard(p) {
+    var st = p.st, A = p.A, ev = p.ev, s = L.eventStatus(st, ev, p.now), w = evWhen(ev, s), r = ev.total ? Math.min(1, s.spent / ev.total) : 0;
+    return html`<button class="card ev-card" onClick=${function () { A.open({ type: 'event', id: ev.id }); }}>
+      <div class="ev-top"><${EvIcon} size=${40} /><div class="grow"><div class="t-label">${ev.name}</div><div class="t-cap muted">${w.date} · ${w.rel}</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></div>
+      <div class="ev-bar"><i class=${s.left < 0 ? 'over' : ''} style=${{ width: r * 100 + '%' }}></i></div>
+      <div class="ev-nums num"><span>${N(s.spent)} spent</span><span class=${s.left < 0 ? 'neg' : ''}>${s.left < 0 ? N(-s.left) + ' over' : N(s.left) + ' left of ' + N(ev.total)}</span></div>
+    </button>`;
+  }
+  // The "Events" section on Home: heading, the events that matter now, and links to plan or see all.
+  function EventsSection(p) {
+    var st = p.st, A = p.A, now = p.now, list = p.list || L.activeEvents(st, now), all = (st.events || []).length;
+    if (!list.length) return null;
+    return html`<div class="ev-section">
+      <div class="sec-head"><div class="t-title">Events</div>
+        <div class="sec-links">${all > list.length && html`<button class="link" onClick=${function () { A.open({ type: 'events' }); }}>See all</button>`}
+          <button class="link" onClick=${function () { A.open({ type: 'eventEdit' }); stat('event-new-open', true); }}>+ Plan one</button></div></div>
+      <div class="ev-cards">${list.map(function (ev) { return html`<${EventCard} key=${ev.id} st=${st} A=${A} ev=${ev} now=${now} />`; })}</div>
+    </div>`;
+  }
+  // Shown above the allocations when there are no events yet. Always there, so events stay reachable.
+  function EventPrompt(p) {
+    var st = p.st, A = p.A;
+    if ((st.events || []).length) return null;
+    return html`<div class="ev-prompt"><button class="ev-prompt-main" onClick=${function () { A.open({ type: 'eventEdit' }); stat('event-new-open', true); }}>
+        <${EvIcon} size=${32} /><span class="grow">Planning a wedding or trip? <b>Plan an event</b></span><${Icon} n="right" size=${16} color="var(--faint)" /></button></div>`;
+  }
+  // Split events into "soon" (live, or within 3 days) and the rest, for placing them on Home.
+  function homeEvents(st, now) {
+    var list = L.activeEvents(st, now), soon = [], later = [];
+    list.forEach(function (ev) { var s = L.eventStatus(st, ev, now); (s.phase === 'live' || (s.phase === 'upcoming' && s.daysTo <= 3) ? soon : later).push(ev); });
+    // One Events section, always above the allocations, with the closest first.
+    return { soon: soon.concat(later), later: [] };
+  }
+  function AllEvents(p) {
+    var st = p.st, A = p.A, now = p.now, evs = (st.events || []).slice();
+    var up = evs.filter(function (ev) { return L.eventStatus(st, ev, now).phase !== 'done'; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var past = evs.filter(function (ev) { return L.eventStatus(st, ev, now).phase === 'done'; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    return html`<div class="layer">
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">All events</div></div>
+      <div class="lb pad">
+        ${up.length > 0 && html`<div><div class="t-title" style=${{ marginBottom: '8px' }}>Coming up</div><div class="ev-cards">${up.map(function (ev) { return html`<${EventCard} key=${ev.id} st=${st} A=${A} ev=${ev} now=${now} />`; })}</div></div>`}
+        ${past.length > 0 && html`<div><div class="t-title" style=${{ marginBottom: '4px' }}>Past</div><div class="list">${past.map(function (ev) {
+          var s = L.eventStatus(st, ev, now);
+          return html`<button class="row" key=${ev.id} onClick=${function () { A.open({ type: 'event', id: ev.id }); }}><${EvIcon} size=${40} />
+            <div class="grow"><div class="name">${ev.name}</div><div class="meta num">${L.shortDate(ev.date)} · ${N(s.spent)} of ${N(ev.total)}</div></div>
+            ${s.left >= 0 ? html`<span class="tag tag-good">${N(s.left)} under</span>` : html`<span class="tag tag-bad">${N(-s.left)} over</span>`}</button>`;
+        })}</div></div>`}
+        ${!evs.length && html`<${Empty} icon="calendar" title="No events yet" text="Plan one for a wedding, a trip or a birthday." />`}
+      </div>
+      <div class="lf pad"><button class="btn btn-primary" onClick=${function () { A.open({ type: 'eventEdit' }); }}><${Icon} n="plus" size=${20} />Plan an event</button></div>
+    </div>`;
+  }
+  function EventEditor(p) {
+    var st = p.st, A = p.A, now = p.now, today = L.dkey(now), orig = p.id ? (st.events || []).filter(function (x) { return x.id === p.id; })[0] : null;
+    var sn = useState(orig ? orig.name : ''), name = sn[0], setName = sn[1];
+    var sd = useState(orig ? orig.date : L.addDays(today, 14)), date = sd[0], setDate = sd[1];
+    var sm = useState(!!(orig && orig.end && orig.end !== orig.date)), multi = sm[0], setMulti = sm[1];
+    var se = useState(orig && orig.end ? orig.end : ''), end = se[0], setEnd = se[1];
+    var stt = useState(orig ? N(orig.total) : ''), total = stt[0], setTotal = stt[1];
+    var si = useState(orig ? clone(orig.items || []) : []), items = si[0], setItems = si[1];
+    var cf = useState(false), confirming = cf[0], setConfirming = cf[1];
+    var tn = +digits(total) || 0, planned = items.reduce(function (a, it) { return a + (+it.amount || 0); }, 0);
+    function setItem(i, k, v) { var n = items.slice(); n[i] = Object.assign({}, n[i]); n[i][k] = v; setItems(n); }
+    function addItem(nm) { setItems(items.concat([{ id: L.uid(), name: nm || '', amount: 0 }])); setTimeout(function () { var el = document.getElementById('ei-' + items.length); if (el) el.focus(); }, 40); }
+    function save() {
+      var ev = { id: orig ? orig.id : L.uid(), name: name.trim(), date: date, end: multi && end && end > date ? end : null, total: tn,
+        items: items.filter(function (it) { return it.name.trim(); }).map(function (it) { return { id: it.id, name: it.name.trim(), amount: +it.amount || 0 }; }), createdAt: orig ? orig.createdAt : Date.now() };
+      A.commit(function (x) { x.events = (x.events || []).filter(function (q) { return q.id !== ev.id; }).concat([ev]); });
+      A.sfx('chime'); stat(orig ? 'event-edit' : 'event-create', true);
+      if (orig) A.back(); else A.show({ type: 'event', id: ev.id });
+    }
+    function del() {
+      A.commit(function (x) { x.events = (x.events || []).filter(function (q) { return q.id !== orig.id; }); x.entries = x.entries.map(function (e) { if (e.event !== orig.id) return e; var c = Object.assign({}, e); delete c.event; delete c.eventItem; return c; }); });
+      A.say('Event deleted. Its purchases moved to your everyday spending'); A.close();
+    }
+    var ideas = EV_IDEAS.filter(function (x) { return !items.some(function (it) { return it.name.toLowerCase() === x.toLowerCase(); }); });
+    return html`<div class="layer up">
+      <div class="lh pad"><${Back} icon=${orig ? 'back' : 'x'} label=${orig ? 'Back' : 'Close'} onClick=${orig ? A.back : A.close} /><div class="lh-title">${orig ? 'Edit event' : 'Plan an event'}</div></div>
+      <div class="lb pad">
+        ${!orig && html`<p class="t-s muted" style=${{ margin: 0 }}>A wedding, a trip, a birthday. Event money is kept separate from your everyday budget.</p>`}
+        <label class="fld"><span class="t-label">What’s the event?</span><input class="field" maxlength="32" placeholder="e.g. Sister’s wedding" value=${name} onInput=${function (e) { setName(e.target.value); }} /></label>
+        <div class="fld"><span class="t-label">When?</span>
+          <div class="ev-dates"><input type="date" class="field" aria-label="Event date" value=${date} onChange=${function (e) { if (e.target.value) setDate(e.target.value); }} />
+            ${multi && html`<span class="t-s muted">to</span><input type="date" class="field" aria-label="End date" min=${date} value=${end} onChange=${function (e) { setEnd(e.target.value); }} />`}</div>
+          <button class="link" style=${{ padding: 0, alignSelf: 'flex-start' }} onClick=${function () { setMulti(!multi); }}>${multi ? 'Just one day' : 'More than one day?'}</button></div>
+        <label class="fld"><span class="t-label">How much can you spend on it?</span>
+          <input class="field num" inputmode="numeric" placeholder="e.g. ₦150,000" value=${total} onInput=${function (e) { var v = +digits(e.target.value) || 0; setTotal(v ? N(v) : ''); }} /></label>
+        <div class="fld"><span class="t-label">Planned costs <span class="muted fw-r">Optional</span></span>
+          ${items.map(function (it, i) {
+            return html`<div class="ev-item" key=${it.id}>
+              <input id=${'ei-' + i} class="field" maxlength="24" placeholder="e.g. Aso-ebi" value=${it.name} onInput=${function (e) { setItem(i, 'name', e.target.value); }} />
+              <input class="field num ev-amt" inputmode="numeric" placeholder="₦0" value=${it.amount ? N(it.amount) : ''} onInput=${function (e) { setItem(i, 'amount', Math.min(+digits(e.target.value) || 0, 99999999)); }} />
+              <button class="icon-btn" aria-label=${'Remove ' + (it.name || 'cost')} onClick=${function () { setItems(items.filter(function (_, j) { return j !== i; })); }}><${Icon} n="x" size=${16} color="var(--muted)" /></button>
+            </div>`;
+          })}
+          <div class="chips">${ideas.slice(0, 6).map(function (x) { return html`<button class="chip" key=${x} onClick=${function () { addItem(x); }}><${Icon} n="plus" size=${14} />${x}</button>`; })}
+            <button class="chip chip-new" onClick=${function () { addItem(''); }}><${Icon} n="pencil" size=${14} />Something else</button></div>
+          ${tn > 0 && planned > 0 && html`<div class=${cx('t-cap', planned > tn ? 'neg' : 'muted')}>${planned > tn ? 'Your planned costs are ' + N(planned - tn) + ' more than ' + N(tn) + '.' : N(planned) + ' planned · ' + N(tn - planned) + ' not planned yet'}
+            ${planned > tn && html` <button class="link" style=${{ padding: 0 }} onClick=${function () { setTotal(N(planned)); }}>Make it ${N(planned)}</button>`}</div>`}
+        </div>
+      </div>
+      <div class="lf pad">
+        ${confirming ? html`<div class="card" style=${{ display: 'flex', flexDirection: 'column', gap: '10px' }}><div class="t-s">Delete this event? Its purchases move to your everyday spending.</div>
+            <div class="btn-row"><button class="btn btn-outline btn-sm" onClick=${function () { setConfirming(false); }}>Cancel</button><button class="btn btn-danger btn-sm" onClick=${del}>Delete</button></div></div>`
+          : html`<button class="btn btn-primary" disabled=${!name.trim() || tn < 1000 || !date} onClick=${save}>${orig ? 'Save changes' : 'Create event'}</button>
+            ${orig && html`<button class="btn btn-text neg" onClick=${function () { setConfirming(true); }}><${Icon} n="trash" size=${18} />Delete event</button>`}`}
+      </div>
+    </div>`;
+  }
+  function EventDetail(p) {
+    var st = p.st, A = p.A, now = p.now, ev = (st.events || []).filter(function (x) { return x.id === p.id; })[0];
+    if (!ev) return html`<div class="layer"><div class="lh pad"><${Back} onClick=${A.back} /></div><div class="lb pad"><${Empty} title="This event was deleted" /></div></div>`;
+    var s = L.eventStatus(st, ev, now), w = evWhen(ev, s), r = ev.total ? Math.min(1, s.spent / ev.total) : 0, today = L.dkey(now);
+    var rows = (ev.items || []).map(function (it) { return { id: it.id, name: it.name, planned: +it.amount || 0, spent: s.byItem[it.id] || 0 }; });
+    if (s.byItem._other) rows.push({ id: '_other', name: 'Not planned', planned: 0, spent: s.byItem._other });
+    return html`<div class="layer">
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">${ev.name}</div><button class="link" onClick=${function () { A.open({ type: 'eventEdit', id: ev.id }); }}>Edit</button></div>
+      <div class="lb pad">
+        <div class="t-s muted">${w.date} · ${w.rel}</div>
+        <div class="card ev-sum">
+          <div class="t-cap muted">${s.phase === 'done' ? 'How it went' : 'Left to spend'}</div>
+          <div class=${cx('d-l num fit', s.left < 0 && 'neg')}>${s.left < 0 ? N(-s.left) + ' over' : N(s.left)}</div>
+          <div class="ev-bar"><i class=${s.left < 0 ? 'over' : ''} style=${{ width: r * 100 + '%' }}></i></div>
+          <div class="ev-nums num"><span>${N(s.spent)} spent</span><span>of ${N(ev.total)}</span></div>
+          ${s.phase === 'done' && html`<div class="t-s">${s.left >= 0 ? 'You came in ' + N(s.left) + ' under. Well done.' : 'You went ' + N(-s.left) + ' over your plan.'}</div>`}
+        </div>
+        ${rows.length > 0 && html`<div>
+          <div class="t-title" style=${{ marginBottom: '6px' }}>${s.phase === 'done' ? 'Planned vs spent' : 'Planned costs'}</div>
+          <div class="ev-rows">${rows.map(function (x) {
+            var over = x.planned && x.spent > x.planned;
+            return html`<div class="ev-row" key=${x.id}><div class="wiw-top"><span class="wiw-name">${x.name}</span>
+                <span class=${cx('num wiw-amt', over && 'neg')}>${N(x.spent)}${x.planned ? html`<span class="muted fw-r"> / ${N(x.planned)}</span>` : ''}</span></div>
+              ${x.planned > 0 && html`<div class="ev-bar sm"><i class=${over ? 'over' : ''} style=${{ width: Math.min(1, x.spent / x.planned) * 100 + '%' }}></i></div>`}</div>`;
+          })}</div></div>`}
+        <div>
+          <div class="t-title" style=${{ marginBottom: '4px' }}>${s.entries.length ? s.entries.length + ' purchase' + (s.entries.length > 1 ? 's' : '') : 'Purchases'}</div>
+          ${s.entries.length ? groupByDay(s.entries).map(function (g) {
+            return html`<div key=${g.day}><div class="t-cap muted day-label" style=${{ marginTop: '10px' }}>${L.dayLabel(g.day, today)}</div>
+              ${g.items.map(function (e) { return html`<${EntryRow} key=${e.id} e=${e} inEvent=${true} onClick=${function () { A.open({ type: 'edit', id: e.id }); }} />`; })}</div>`;
+          }) : html`<div class="t-s muted" style=${{ marginTop: '6px' }}>Nothing yet. Log what you buy for it here, or pick this event when you log.</div>`}
+        </div>
+      </div>
+      ${s.phase !== 'done' || s.daysSince <= 7 ? html`<div class="lf pad"><button class="btn btn-primary" onClick=${function () { A.add({ event: ev.id }, true); }}><${Icon} n="plus" size=${20} />Log a purchase for this event</button></div>` : null}
+    </div>`;
+  }
+  // Someone who only plans events (no everyday budget yet).
+  function EventsHome(p) {
+    var st = p.st, A = p.A, now = p.now;
+    return html`<div class="pad tabpad events-home">
+      <div class="onboard-brand"><${Logo} size=${32} /><span>Budge</span></div>
+      <h1 class="h1">Your events</h1>
+      <div class="ev-cards">${(st.events || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).map(function (ev) { return html`<${EventCard} key=${ev.id} st=${st} A=${A} ev=${ev} now=${now} />`; })}</div>
+      <button class="link ev-plan" onClick=${function () { A.open({ type: 'eventEdit' }); }}><${Icon} n="plus" size=${16} />Plan another event</button>
+      <div class="card ev-more"><div class="t-label">Want to budget everyday spending too?</div>
+        <div class="t-s muted">Set a weekly or monthly budget, or just track what you spend.</div>
+        <div class="btn-row" style=${{ marginTop: '10px' }}><button class="btn btn-outline btn-sm" onClick=${function () { A.create(); }}>Set up a budget</button><button class="btn btn-text btn-sm" onClick=${function () { A.open({ type: 'track' }); }}>Just track</button></div></div>
+    </div>`;
+  }
+  function EventAdd(p) {
+    var st = p.st, A = p.A, now = p.now, today = L.dkey(now), close = p.onClose || A.close;
+    var ev = (st.events || []).filter(function (x) { return x.id === p.id; })[0];
+    var ss = useState('amount'), step = ss[0], setStep = ss[1], sa = useState(''), amt = sa[0], setAmt = sa[1];
+    var si = useState(null), item = si[0], setItem = si[1], sn = useState(''), note = sn[0], setNote = sn[1], sd = useState(today), day = sd[0], setDay = sd[1];
+    var sv = useState(null), saved = sv[0], setSaved = sv[1], n = +amt || 0;
+    var order = (ev && ev.items && ev.items.length) ? ['amount', 'item', 'check'] : ['amount', 'check'], at = order.indexOf(step);
+    function onKey(k) { setAmt(applyKey(amt, k)); }
+    function after() { if (n > 0) setStep(order[1]); }
+    useKeys(onKey, after, step === 'amount');
+    if (!ev) return null;
+    var s = L.eventStatus(st, ev, now), b = L.mainBudget(st);
+    function back() { if (at <= 0) close(); else setStep(order[at - 1]); }
+    function save() {
+      var e = { id: L.uid(), type: 'out', amount: n, note: note.trim(), ts: tsFor(day, today, now), cat: 'other', work: false, bid: b ? b.id : null, event: ev.id, eventItem: item && item !== '_other' ? item : null };
+      A.commit(function (x) { x.entries.push(e); }); stat('log-event', true); A.sfx(s.left - n < 0 ? 'over' : 'pour'); setSaved(e); setStep('saved');
+    }
+    var head = html`<div class="lh pad"><${Back} icon=${at <= 0 ? 'x' : 'back'} label=${at <= 0 ? 'Close' : 'Back'} onClick=${back} />
+      <div class="steps" aria-label=${'Step ' + (at + 1) + ' of ' + order.length}>${order.map(function (x, i) { return html`<i class=${i <= at ? 'on' : ''}></i>`; })}</div><span style=${{ width: '40px' }}></span></div>`;
+    if (step === 'saved' && saved) {
+      var s2 = L.eventStatus(st, ev, now);
+      return html`<div class="layer up"><div class="lh pad"><span style=${{ flex: 1 }}></span><${Back} icon="x" label="Close" onClick=${close} /></div>
+        <div class="saved pad"><span class="check-big"><${Icon} n="check" size=${34} /></span>
+          <div class="t-label" style=${{ marginBottom: '4px' }}>Logged for ${ev.name}</div>
+          <div class=${cx('d-xl num fit', s2.left < 0 && 'neg')}>${N(Math.abs(s2.left))}</div><div class="t-s muted">${s2.left < 0 ? 'over your ' + N(ev.total) + ' plan' : 'left for this event'}</div></div>
+        <div class="lf pad"><button class="btn btn-primary" onClick=${close}>Done</button>
+          <div class="saved-links"><button class="btn btn-text" onClick=${function () { setStep('amount'); setAmt(''); setItem(null); setNote(''); setSaved(null); }}>Log another</button>
+            <button class="btn btn-text muted" onClick=${function () { A.commit(function (x) { x.entries = x.entries.filter(function (q) { return q.id !== saved.id; }); }); A.say('Removed'); close(); }}>Undo</button></div></div>
+      </div>`;
+    }
+    if (step === 'item') return html`<div class="layer up" style=${{ animation: 'none' }}>${head}
+      <div class="lb pad step-in"><div><h1 class="h1">What was it for?</h1><p class="t-s muted step-sub num">${N(n)} · ${ev.name}</p></div>
+        <div class="ap-grid">${ev.items.concat([{ id: '_other', name: 'Something else', amount: 0 }]).map(function (it) {
+          var sp = s.byItem[it.id] || 0, left = it.amount - sp;
+          return html`<button class=${cx('ap-tile', item === it.id && 'on')} key=${it.id} onClick=${function () { setItem(it.id); A.sfx('tap'); setTimeout(function () { setStep('check'); }, 140); }}>
+            <${EvIcon} size=${40} /><span class="ap-name">${it.name}</span>
+            <span class=${cx('ap-left num', it.amount && left < 0 && 'neg')}>${it.amount ? (left < 0 ? N(-left) + ' over' : N(left) + ' left') : 'Not planned'}</span></button>`;
+        })}</div></div></div>`;
+    if (step === 'check') {
+      var itm = (ev.items || []).filter(function (x) { return x.id === item; })[0];
+      return html`<div class="layer up" style=${{ animation: 'none' }}>${head}
+        <div class="lb pad step-in"><h1 class="h1">Check and save</h1>
+          <div class="sum-card"><div class="sum-top"><${EvIcon} size=${44} /><div class="grow"><div class="t-label">${itm ? itm.name : ev.name}</div><div class="t-cap muted">${ev.name}</div></div><div class="sum-amt num">${N(n)}</div></div>
+            <div class="sum-change"><span class="t-s muted">Left for this event</span><span class="num sum-from">${N(s.left)}</span><${Icon} n="right" size=${14} color="var(--faint)" />
+              <span class=${cx('num sum-to', s.left - n < 0 && 'neg')}>${s.left - n < 0 ? N(n - s.left) + ' over' : N(s.left - n)}</span></div></div>
+          <label class="fld"><span class="t-label">What was it? <span class="muted fw-r">Optional</span></span><input class="field" maxlength="40" placeholder="e.g. Aso-ebi fabric" value=${note} onInput=${function (e2) { setNote(e2.target.value); }} /></label>
+          <div class="fld"><span class="t-label">When?</span><${DateChips} today=${today} value=${day} onChange=${setDay} /></div>
+        </div><div class="lf pad"><button class="btn btn-primary" onClick=${save}>Save</button></div></div>`;
+    }
+    return html`<div class="layer up">${head}
+      <div class="lb lb-amount"><div class="pad"><h1 class="h1">How much did you spend?</h1><p class="t-s muted step-sub">For ${ev.name}</p></div>
+        <div class="amount-wrap pad"><${BigAmount} value=${amt} /><span class="hint"><span class="dot" style=${{ background: s.left < 0 ? 'var(--critical)' : 'var(--emerald)' }}></span>${s.left < 0 ? N(-s.left) + ' over' : N(s.left) + ' left for this event'}</span></div>
+        <div class="pad"><${Keypad} onKey=${onKey} /></div></div>
+      <div class="lf pad"><button class="btn btn-primary" disabled=${!n} onClick=${after}>Continue</button></div></div>`;
+  }
+
   // ================= just tracking =================
   function TrackSetup(p) {
     var A = p.A, now = p.now, sr = useState('week'), r = sr[0], setR = sr[1];
@@ -1165,6 +1419,8 @@
           <div class="t-s muted">Keep logging what you spend. The more you log, the better it fits.</div>
           ${ti.canAsk && html`<button class="link" style=${{ padding: 0, alignSelf: 'flex-start' }} onClick=${function () { A.open({ type: 'suggest' }); }}>Suggest a budget now</button>`}
         </div>`}
+      <${EventsSection} st=${st} A=${A} now=${now} />
+      <${EventPrompt} st=${st} A=${A} />
       <${WhereItWent} st=${st} b=${b} now=${now} unit0=${b.rhythm} />
       <div class="home-today">
         <div class="sec-head"><div class="t-title">Today</div><button class="link" onClick=${function () { A.tab('history'); }}>History</button></div>
@@ -1215,7 +1471,7 @@
     var once = b.kind === 'once', lw = once ? 'This budget' : 'Last ' + u;
     var title = !showReview ? '' : last.over > 0 ? lw + (once ? ' went ' : ' you went ') + N(last.over) + ' over'
       : last.saved > 0 ? (once ? 'This budget left ' : lw + ' you had ') + N(last.saved) + (once ? '' : ' left over') : lw + ' you spent it all';
-    var nudge = nudgeFor(st, b, s);
+    var nudge = nudgeFor(st, b, s), hev = homeEvents(st, p.now);
     function act() {
       if (nudge.kind === 'cover') A.cover(b.id, nudge.id);
       else if (nudge.kind === 'view') A.open({ type: 'cat', id: nudge.id, unit: s.unit, offset: 0 });
@@ -1248,11 +1504,14 @@
         <button class="nudge-btn" onClick=${act}>${nudge.btn}</button>
         <button class="nudge-x" aria-label="Hide for today" onClick=${function () { A.commitB(b.id, function (x) { x.nudgeOff = s.today; }); }}><${Icon} n="x" size=${14} /></button>
       </div>`}
+      ${hev.soon.length > 0 && html`<${EventsSection} st=${st} A=${A} now=${p.now} list=${hev.soon} />`}
+      <${EventPrompt} st=${st} A=${A} />
       </div>
       <div class="pots-card">
         <div class="pots-head"><div class="t-title">This ${u}’s allocations</div><button class="pots-edit" onClick=${function () { A.open({ type: 'split' }); }}>Edit</button></div>
         ${s.pots.map(function (pt) { return html`<${PotRow} key=${pt.id} pot=${pt} onClick=${function () { A.open({ type: 'cat', id: pt.id, unit: s.unit, offset: 0 }); }} />`; })}
       </div>
+      ${hev.later.length > 0 && html`<div class="home-ev"><${EventsSection} st=${st} A=${A} now=${p.now} list=${hev.later} /></div>`}
       ${s.phase === 'live' && html`<div class="home-today">
         <div class="sec-head"><div class="t-title">Today</div>
           <button class="link" onClick=${function () { A.tab('history'); }}>History</button>
@@ -1985,6 +2244,7 @@
     var sStep = useState(pre.alert != null ? 'paste' : 'amount'), step = sStep[0], setStep = sStep[1];
     var sAmt = useState(pre.amount ? String(pre.amount) : ''), amt = sAmt[0], setAmt = sAmt[1];
     var sTxt = useState(pre.alert || ''), alertText = sTxt[0], setAlertText = sTxt[1];
+    var sEv = useState(null), evFor = sEv[0], setEvFor = sEv[1], sEvI = useState(null), evItem = sEvI[0], setEvItem = sEvI[1];
     var quick = L.frequent(st, now, 4);
     var sCat = useState(pre.cat || null), catId = sCat[0], setCat = sCat[1];
     var sNote = useState(''), note = sNote[0], setNote = sNote[1];
@@ -2010,6 +2270,7 @@
     function save(q) {
       q = q || {};
       var e = { id: L.uid(), type: 'out', amount: q.amount || n, note: (q.note != null ? q.note : note).trim(), ts: tsFor(q.day || day, today, now), cat: q.cat || catId || 'other', work: false, bid: b.id };
+      if (!q.quick && evFor) { e.event = evFor; e.eventItem = evItem; }
       if (q.quick) stat('log-quick', true);
       A.commit(function (x) { x.entries.push(e); x.lastBid = b.id; }); stat('log-purchase', true);
       var x2 = clone(st); x2.entries.push(e); var s2 = L.status(x2, L.findBudget(x2, b.id), now);
@@ -2026,7 +2287,9 @@
       var e = saved, streak = L.streak(st, now), inPeriod = s && L.entryDay(e) >= s.start && L.entryDay(e) <= s.end;
       var pt = s.pots.filter(function (x) { return x.id === e.cat; })[0] || { id: e.cat, budget: 0, spent: 0, left: 0, ratio: 0, state: 'none' };
       var cname = L.cat(e.cat).name, body, extra = null;
-      if (b.mode === 'track') { body = html`<div class="d-xl num fit">${N(e.amount)}</div><div class="t-s muted">${cname}${inPeriod ? ' · ' + N(s.spent) + ' spent this ' + u : ''}</div>`; inPeriod = false; }
+      if (e.event) { var evx = (st.events || []).filter(function (x) { return x.id === e.event; })[0], es = evx && L.eventStatus(st, evx, now);
+        body = html`<div class=${cx('d-xl num fit', es && es.left < 0 && 'neg')}>${N(es ? Math.abs(es.left) : e.amount)}</div><div class="t-s muted">${es ? (es.left < 0 ? 'over your plan for ' : 'left for ') + evx.name : ''}</div>`; inPeriod = false; }
+      else if (b.mode === 'track') { body = html`<div class="d-xl num fit">${N(e.amount)}</div><div class="t-s muted">${cname}${inPeriod ? ' · ' + N(s.spent) + ' spent this ' + u : ''}</div>`; inPeriod = false; }
       else if (!inPeriod) body = html`<div class="d-xl num fit">${N(e.amount)}</div><div class="t-s muted">Logged for ${L.shortDate(L.entryDay(e))}</div>`;
       else if (!pt.budget) body = html`<div class="d-xl num fit">${N(Math.max(0, s.left))}</div><div class="t-s muted">left${per}</div>
         <div class="t-cap muted" style=${{ marginTop: '6px' }}>${cname} isn’t in your budget, so it came out of your total.</div>`;
@@ -2068,14 +2331,15 @@
 
     if (step === 'check') {
       var cid = catId || 'other', c = L.cat(cid), q = s.pots.filter(function (x) { return x.id === cid; })[0];
-      var inNow = day >= s.start && day <= s.end && b.mode !== 'track', has = q && q.budget > 0;
+      var evs = L.eventsOn(st, day), forEv = evFor && evs.filter(function (x) { return x.id === evFor; })[0];
+      var inNow = day >= s.start && day <= s.end && b.mode !== 'track' && !forEv, has = q && q.budget > 0;
       var before = has ? q.left : s.left, after = before - (inNow ? n : 0), label = has ? 'Left in ' + c.name.toLowerCase() : 'Left this ' + u;
       return html`<div class="layer up" style=${{ animation: 'none' }}>${head}
         <div class="lb pad step-in" key="check">
           <h1 class="h1">Check and save</h1>
           <div class="sum-card">
             <div class="sum-top"><${CatIcon} id=${cid} size=${44} />
-              <div class="grow"><div class="t-label">${c.name}</div><div class="t-cap muted">${b.mode === 'track' ? 'Category' : has ? 'Allocation' : 'Not in your budget'}</div></div>
+              <div class="grow"><div class="t-label">${c.name}</div><div class="t-cap muted">${forEv ? 'For ' + forEv.name : b.mode === 'track' ? 'Category' : has ? 'Allocation' : 'Not in your budget'}</div></div>
               <div class="sum-amt num">${N(n)}</div></div>
             ${inNow && html`<div class="sum-change">
               <span class="t-s muted">${label}</span>
@@ -2083,6 +2347,11 @@
               <${Icon} n="right" size=${14} color="var(--faint)" />
               <span class=${cx('num sum-to', after < 0 && 'neg')}>${after < 0 ? N(-after) + ' over' : N(after)}</span></div>`}
           </div>
+          ${evs.length > 0 && html`<div class="fld"><span class="t-label">Is this for an event?</span>
+            <div class="chips">${evs.map(function (ev) { return html`<button class=${cx('chip', evFor === ev.id && 'on')} key=${ev.id} onClick=${function () { setEvFor(evFor === ev.id ? null : ev.id); setEvItem(null); }}><${Icon} n="calendar" size=${14} />${ev.name}</button>`; })}</div>
+            ${forEv && forEv.items && forEv.items.length > 0 && html`<div class="chips">${forEv.items.map(function (it) { return html`<button class=${cx('chip', evItem === it.id && 'on')} key=${it.id} onClick=${function () { setEvItem(evItem === it.id ? null : it.id); }}>${it.name}</button>`; })}</div>`}
+            ${forEv && html`<div class="t-cap muted">It counts toward ${forEv.name}, not your everyday budget.</div>`}
+          </div>`}
           <label class="fld"><span class="t-label">What was it? <span class="muted fw-r">Optional</span></span>
             <input id="add-note" class="field" placeholder=${'e.g. ' + (cid === 'treats' ? 'Shawarma' : cid === 'transport' ? 'Bolt to work' : cid === 'food' ? 'Rice and plantain' : 'Something')} maxlength="40" value=${note} onInput=${function (ev) { setNote(ev.target.value); }} /></label>
           <div class="fld"><span class="t-label">When?</span><${DateChips} today=${today} value=${day} onChange=${setDay} /></div>
@@ -2478,6 +2747,7 @@
         scrollTop();
       },
       open: function (l) { setLayer(Object.assign({ prev: layer }, l)); },
+      show: function (l) { setLayer(Object.assign({ prev: null }, l)); },
       close: function () { setLayer(null); },
       back: function () { setLayer(layer && layer.prev ? layer.prev : null); },
       cover: function (bid, id, keep) { setLayer({ type: 'cover', bid: bid, id: id, prev: keep ? layer : null }); },
@@ -2498,7 +2768,9 @@
     if (!ready) body = html`<div class="splash"><${Logo} size=${64} /></div>`;
     else {
       var screen, tabbar = null;
-      if (!budget) screen = html`<${Onboarding} A=${A} />`;
+      EVN = {}; (st.events || []).forEach(function (ev) { var it = {}; (ev.items || []).forEach(function (x) { it[x.id] = x.name; }); EVN[ev.id] = { name: ev.name, items: it }; });
+      if (!budget && (st.events || []).length) screen = html`<${EventsHome} st=${st} A=${A} now=${now} />`;
+      else if (!budget) screen = html`<${Onboarding} A=${A} />`;
       else {
         var t = nav.tab;
         screen = t === 'home' ? html`<${BudgetHome} st=${st} b=${budget} now=${now} A=${A} />`
@@ -2519,8 +2791,12 @@
       var lay = null;
       if (layer) {
         var lb = layer.bid ? L.findBudget(st, layer.bid) : budget;
-        if (layer.type === 'add') lay = html`<${AddFlow} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} onClose=${layer.prev ? A.back : A.close} />`;
+        if (layer.type === 'add' && layer.preset && layer.preset.event) lay = html`<${EventAdd} key=${layer.k} st=${st} now=${now} A=${A} id=${layer.preset.event} onClose=${layer.prev ? A.back : A.close} />`;
+        else if (layer.type === 'add') lay = html`<${AddFlow} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} onClose=${layer.prev ? A.back : A.close} />`;
         else if (layer.type === 'create') lay = html`<${CreateBudget} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
+        else if (layer.type === 'eventEdit') lay = html`<${EventEditor} key=${layer.id || 'new'} st=${st} A=${A} now=${now} id=${layer.id} />`;
+        else if (layer.type === 'events') lay = html`<${AllEvents} st=${st} A=${A} now=${now} />`;
+        else if (layer.type === 'event') lay = html`<${EventDetail} st=${st} A=${A} now=${now} id=${layer.id} />`;
         else if (layer.type === 'track') lay = html`<${TrackSetup} A=${A} now=${now} />`;
         else if (layer.type === 'suggest' && budget) lay = html`<${SuggestLayer} st=${st} b=${budget} A=${A} now=${now} />`;
         else if (layer.type === 'recap' && budget) lay = html`<${RecapLayer} st=${st} b=${budget} A=${A} />`;

@@ -725,3 +725,36 @@ body { background: var(--ground); color: var(--ink); }
 .track-dots i.on { background: var(--emerald); }
 .track-ready { display: flex; gap: 12px; align-items: flex-start; background: var(--emerald-soft); }
 .track-ready .grow { flex: 1; min-width: 0; }
+
+/* ---------- v18 preview: events ---------- */
+.ev-ic { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; flex: none; }
+.ev-cards { display: flex; flex-direction: column; gap: 10px; }
+.ev-card { display: flex; flex-direction: column; gap: 10px; text-align: left; width: 100%; }
+.ev-top { display: flex; align-items: center; gap: 12px; }
+.ev-top .grow { flex: 1; min-width: 0; }
+.ev-bar { height: 8px; border-radius: 8px; background: var(--track); overflow: hidden; }
+.ev-bar.sm { height: 5px; margin-top: 6px; }
+.ev-bar i { display: block; height: 100%; border-radius: 8px; background: var(--ink-2); transition: width .5s cubic-bezier(.2, .8, .2, 1); }
+.ev-bar i.over { background: var(--critical); }
+.ev-nums { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); gap: 8px; }
+.ev-plan { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 0; }
+.ev-sum { display: flex; flex-direction: column; gap: 8px; }
+.ev-rows { display: flex; flex-direction: column; gap: 12px; }
+.ev-dates { display: flex; align-items: center; gap: 8px; }
+.ev-dates .field { flex: 1; min-width: 0; }
+.ev-item { display: flex; gap: 8px; align-items: center; }
+.ev-item .field { flex: 1; min-width: 0; }
+.ev-item .ev-amt { flex: none; width: 116px; text-align: right; }
+.ev-entry { font-size: 14px; color: var(--ink-2); height: 40px; }
+.events-home .onboard-brand { margin-bottom: 4px; }
+.ev-more { display: flex; flex-direction: column; gap: 4px; }
+.ev-section { display: flex; flex-direction: column; gap: 4px; }
+.sec-links { display: flex; gap: 14px; }
+.ev-prompt { display: flex; align-items: center; gap: 4px; border-radius: 16px; border: 1px dashed var(--line); padding: 4px 12px; }
+.ev-prompt-main { flex: 1; display: flex; align-items: center; gap: 10px; text-align: left; font-size: 14px; color: var(--ink-2); padding: 6px 0; min-width: 0; }
+.ev-prompt-main .grow { flex: 1; min-width: 0; }
+.ev-prompt-main b { font-weight: 600; color: var(--ink); }
+.desk .home-grid { grid-template-areas: "a p" "t p" "e p" "x p"; }
+.desk .home-ev { grid-area: e; }
+.desk .home-ev-prompt { grid-area: x; }
+.home-ev-prompt:empty { display: none; }
