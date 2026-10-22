@@ -1,7 +1,7 @@
 {
   "name": "Budge",
   "short_name": "Budge",
-  "description": "See what’s left as you spend. A weekly budget split into pots. Log what you buy in two taps. Your data stays on your phone.",
+  "description": "See what’s left as you spend. A weekly budget split into allocations. Log what you buy in seconds. Your data stays on your phone.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
