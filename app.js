@@ -527,6 +527,52 @@
     b.done[s.key] = 'applied';
   }
 
+  // ---------- quick logging ----------
+  // Purchases you make again and again (same note, allocation and amount), most frequent first.
+  function frequent(state, now, max) {
+    var since = addDays(dkey(now), -42), seen = {}, out = [];
+    state.entries.filter(personalOut).forEach(function (e) {
+      if (entryDay(e) < since || !e.note) return;
+      var k = e.note.trim().toLowerCase() + '|' + e.cat; // same thing, latest price
+      if (!seen[k]) { seen[k] = { note: e.note.trim(), cat: e.cat, amount: e.amount, n: 0, last: 0 }; out.push(seen[k]); }
+      seen[k].n++; if (e.ts > seen[k].last) { seen[k].last = e.ts; seen[k].amount = e.amount; }
+    });
+    return out.filter(function (x) { return x.n >= 2; }).sort(function (a, b) { return b.n - a.n || b.last - a.last; }).slice(0, max || 4);
+  }
+  // Read a Nigerian bank debit alert (SMS or email text): amount, who it went to, and a likely allocation.
+  var GUESS = [
+    ['treats', /shawarma|restaurant|kitchen|chicken|pizza|burger|cafe|coffee|eatery|suya|lounge|bar\b|grill|domino|kfc|chicken republic|cold stone|bukka|amala/i],
+    ['transport', /bolt|uber|indrive|taxi|ride|lagride|brt|okada|keke|transport|bus\b|cowry/i],
+    ['fuel', /fuel|petrol|filling|total ?energies|oando|conoil|mrs\b|ardova|nnpc|mobil|forte/i],
+    ['data', /airtime|data|mtn|glo\b|airtel|9mobile|smile|spectranet|recharge/i],
+    ['subs', /netflix|spotify|showmax|dstv|gotv|apple\.com|youtube|prime video|icloud|subscription/i],
+    ['food', /shoprite|spar\b|supermarket|market|grocer|foodco|justrite|ebeano|prince ebeano|hubmart/i],
+    ['household', /ikea|hardware|cleaning|detergent|generator|diesel|gas\b|ikedc|ekedc|electricity|prepaid meter|water/i]
+  ];
+  function parseAlert(text) {
+    var t = String(text || '').replace(/ /g, ' ');
+    if (!t.trim()) return { error: 'empty' };
+    var credit = /\b(credit|cr\b|credited|received)\b/i.test(t) && !/\b(debit|dr\b|debited)\b/i.test(t);
+    var amt = null, m;
+    var near = /(?:amt|amount|debit|dr|debited|ngn|₦|n)\s*[:\-]?\s*(?:ngn|₦|n)?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/ig;
+    while ((m = near.exec(t)) && amt === null) { var v = parseFloat(m[1].replace(/,/g, '')); if (v > 0 && v < 1e8) amt = v; }
+    if (amt === null) return { error: 'no-amount' };
+    var desc = '';
+    var dm = /(?:desc(?:ription)?|narration|naration|remark|details?|purpose|memo)\s*[:\-]\s*([^\n\r]+)/i.exec(t);
+    if (dm) desc = dm[1];
+    else { var tm = /(?:to|at|for)\s+([A-Za-z][A-Za-z0-9 &'.\-]{2,40})/.exec(t); if (tm) desc = tm[1]; }
+    desc = desc.replace(/\b(bal(ance)?|avail(able)?|date|time|acct|a\/c)\b.*$/i, '').replace(/[\/|_]+/g, ' ');
+    var junk = /^(pos|web|nip|trf|transfer|purchase|payment|pymt|ussd|frm|from|to|at|for|txn|ref)\b[\s:\-]*/i, guard = 0;
+    while (junk.test(desc.trim()) && guard++ < 6) desc = desc.trim().replace(junk, '');
+    desc = desc.split(/\s+/).map(function (w) { return w.replace(/\.(eu|com|ng|io|co)$/i, '').replace(/[.,;:]+$/, ''); })
+      .filter(function (w) { return w && !/\d/.test(w) && w.length > 1; }).join(' ').trim();
+    if (desc.length > 30) desc = desc.slice(0, 30).trim();
+    var note = desc ? desc.toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }) : '';
+    var cat = null;
+    for (var i = 0; i < GUESS.length; i++) if (GUESS[i][1].test(t)) { cat = GUESS[i][0]; break; }
+    return { amount: Math.round(amt), note: note, cat: cat, credit: credit };
+  }
+
   // ---------- sample data ----------
   function sampleState(now) {
     var today = dkey(now), w0 = weekStart(today), w1 = addDays(w0, -7), w2 = addDays(w0, -14);
@@ -591,7 +637,7 @@
     daysInMonth: daysInMonth, periodStart: periodStart, periodEnd: periodEnd, shiftPeriod: shiftPeriod,
     rangeLabel: rangeLabel, dayLabel: dayLabel, shortDate: shortDate, weekdayName: weekdayName, timeLabel: timeLabel, hhmm: hhmm, time12: time12,
     naira: naira, short: short, roundTo: roundTo, uid: uid, blankState: blankState, newBudget: newBudget, findBudget: findBudget,
-    unitOf: unitOf, phaseOf: phaseOf, totalBudget: totalBudget, planTotal: planTotal, periodTotal: periodTotal, setPeriod: setPeriod, raisePeriod: raisePeriod, autoSplit: autoSplit, convertBudgets: convertBudgets, migrate: migrate,
+    unitOf: unitOf, phaseOf: phaseOf, totalBudget: totalBudget, frequent: frequent, parseAlert: parseAlert, planTotal: planTotal, periodTotal: periodTotal, setPeriod: setPeriod, raisePeriod: raisePeriod, autoSplit: autoSplit, convertBudgets: convertBudgets, migrate: migrate,
     entryDay: entryDay, personalOut: personalOut, catTotals: catTotals, ofBudget: ofBudget, streak: streak, loggedOn: loggedOn, bestStreak: bestStreak, badges: badges,
     status: status, monthSummary: monthSummary, summarize: summarize, needsRollover: needsRollover, anyRollover: anyRollover,
     rollover: rollover, rolloverAll: rolloverAll, rangeView: rangeView, pattern: pattern, review: review,
@@ -924,6 +970,7 @@
       <div class="onboard-hero" ref=${heroRef}><${DemoTank} height=${heroH} /></div>
       <div class="onboard-actions">
         <button class="btn btn-primary" onClick=${function () { A.create(); }}>Set up my budget</button>
+        ${!PWA && html`<button class="btn btn-text proto-link" onClick=${A.loadSample}>Prototype only: load a sample week</button>`}
       </div>
     </div>`;
   }
@@ -1077,7 +1124,7 @@
         <div class="b-text">
           <div class="t-label">${title}</div>
           <div class="t-s muted">${last.saved > 0 ? 'It’s added to your total left over.' : once ? 'This budget has ended.' : 'This ' + u + ' starts fresh.'}</div>
-          <div class="b-actions"><button class="btn btn-dark btn-sm" onClick=${function () { A.tab('insights'); }}>See review</button></div>
+          <div class="b-actions"><button class="btn btn-dark btn-sm" onClick=${function () { A.open({ type: 'recap' }); stat('recap-open', true); }}>See your ${u}</button></div>
         </div>
         <button class="icon-btn" aria-label="Dismiss" style=${{ width: '32px', height: '32px' }} onClick=${function () { A.commitB(b.id, function (x) { x.bannerSeen = last.start; }); }}><${Icon} n="x" size=${16} /></button>
       </div>`}
@@ -1259,6 +1306,7 @@
         </div>
         <div style=${{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
           <span class="t-s num">Spent <b>${N(p0.spent)}</b> of ${N(p0.budget)}</span>
+          ${idx === hist.length - 1 && html`<button class="link" style=${{ padding: 0, marginLeft: 'auto' }} onClick=${function () { A.open({ type: 'recap' }); }}>Share this ${u}</button>`}
           ${p0.over > 0 ? html`<span class="tag tag-bad">${N(p0.over)} over</span>` : p0.saved > 0 ? html`<span class="tag tag-good">${N(p0.saved)} left over</span>` : html`<span class="tag tag-none">On budget</span>`}
         </div>
       </div>`}
@@ -1279,11 +1327,7 @@
           </div>
         </div>`;
       })}
-      ${(st.savings || 0) > 0 && html`<div class="card" style=${{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <span class="b-ic" style=${{ background: 'var(--emerald-soft)' }}><${Icon} n="piggy" size=${20} color="var(--emerald-deep)" /></span>
-        <div style=${{ flex: 1 }}><div class="t-label">Total left over</div><div class="t-cap muted">Money you didn’t spend, plus what you set aside</div></div>
-        <div class="t-title num">${N(st.savings || 0)}</div>
-      </div>`}
+      <${GoalCard} st=${st} A=${A} />
       ${past.length > 0 && html`<div>
         <div class="t-title" style=${{ marginBottom: '4px' }}>Past ${u}s</div>
         <div class="list">${past.map(function (h) {
@@ -1297,6 +1341,98 @@
         })}</div>
       </div>`}
       <${BadgeGrid} st=${st} now=${now} />
+    </div>`;
+  }
+  // A week (or month) in one card, ready to share as an image.
+  function recapData(st, b, h) {
+    var by = h.byCat || {}, ids = Object.keys(by).filter(function (k) { return by[k] > 0; }).sort(function (x, y) { return by[y] - by[x]; });
+    var days = 0, k = h.start; while (k <= h.end) { if (L.loggedOn(st, k)) days++; k = L.addDays(k, 1); }
+    var n = L.diffDays(h.start, h.end) + 1;
+    return { h: h, top: ids[0] || null, topAmt: ids[0] ? by[ids[0]] : 0, topPct: h.spent ? Math.round((by[ids[0]] || 0) / h.spent * 100) : 0, days: days, n: n, unit: h.rhythm === 'month' ? 'month' : 'week' };
+  }
+  function drawRecap(st, d) {
+    var c = document.createElement('canvas'), W = 1080, H = 1350; c.width = W; c.height = H; var x = c.getContext('2d');
+    var F = '"Inter", system-ui, sans-serif';
+    x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#E3F7EC'; x.beginPath(); x.roundRect ? x.roundRect(60, 60, W - 120, H - 120, 56) : x.rect(60, 60, W - 120, H - 120); x.fill();
+    var g = x.createLinearGradient(0, 760, 0, H - 60); g.addColorStop(0, '#12B76A'); g.addColorStop(1, '#0B8A4F');
+    x.save(); x.beginPath(); x.roundRect ? x.roundRect(60, 60, W - 120, H - 120, 56) : x.rect(60, 60, W - 120, H - 120); x.clip();
+    x.fillStyle = g; x.beginPath(); x.moveTo(60, 820); x.bezierCurveTo(300, 760, 560, 880, 780, 810); x.bezierCurveTo(900, 775, 1000, 800, W - 60, 815); x.lineTo(W - 60, H); x.lineTo(60, H); x.fill(); x.restore();
+    x.fillStyle = '#0B0F0D'; x.font = '700 44px ' + F; x.fillText('Budge', 130, 170);
+    x.fillStyle = '#3A403D'; x.font = '500 40px ' + F; x.fillText('My ' + d.unit + ' · ' + L.rangeLabel(d.h.start, d.h.end, d.h.rhythm), 130, 290);
+    var over = d.h.over > 0;
+    x.fillStyle = over ? '#C2262B' : '#0B0F0D'; x.font = '650 150px ' + F; x.fillText(N(over ? d.h.over : d.h.saved), 124, 450);
+    x.fillStyle = '#3A403D'; x.font = '500 44px ' + F; x.fillText(over ? 'over budget' : 'left over', 130, 520);
+    x.font = '500 40px ' + F; x.fillText('Spent ' + N(d.h.spent) + ' of ' + N(d.h.budget), 130, 620);
+    x.fillStyle = '#FFFFFF'; x.font = '600 46px ' + F;
+    if (d.top) x.fillText('Most went on ' + L.cat(d.top).name.toLowerCase() + ' (' + d.topPct + '%)', 130, 1010);
+    x.font = '500 40px ' + F; x.fillText('Logged ' + d.days + ' of ' + d.n + ' days' + (L.streak(st, Date.now()) > 1 ? ' · ' + L.streak(st, Date.now()) + '-day streak' : ''), 130, 1080);
+    x.font = '500 34px ' + F; x.fillStyle = 'rgba(255,255,255,.8)'; x.fillText('dvn019.github.io/budge', 130, H - 130);
+    return c;
+  }
+  function RecapLayer(p) {
+    var st = p.st, A = p.A, b = p.b, hist = b.history.filter(function (h) { return h.active; }), h = hist[hist.length - 1];
+    var im = useState(null), img = im[0], setImg = im[1];
+    if (!h) return html`<div class="layer"><div class="lh pad"><${Back} onClick=${A.back} /></div><div class="lb pad"><${Empty} title="No finished week yet" /></div></div>`;
+    var d = recapData(st, b, h), over = h.over > 0, goal = st.goal;
+    function share() {
+      stat('recap-share', true);
+      var c = drawRecap(st, d);
+      c.toBlob(function (blob) {
+        var file = blob && typeof File === 'function' ? new File([blob], 'budge-' + d.unit + '.png', { type: 'image/png' }) : null;
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: 'My ' + d.unit + ' on Budge' }).catch(function () { });
+        else setImg(c.toDataURL('image/png'));
+      }, 'image/png');
+    }
+    return html`<div class="layer up">
+      <div class="lh pad"><${Back} icon="x" label="Close" onClick=${A.back} /><div class="lh-title">Your ${d.unit}</div></div>
+      <div class="lb pad">
+        ${img ? html`<div class="recap-img"><img src=${img} alt="Your recap image" /><div class="t-cap muted">Press and hold the image to save or share it.</div></div>` : html`
+        <div class="recap">
+          <div class="t-s recap-range">${L.rangeLabel(h.start, h.end, h.rhythm)}</div>
+          <div class=${cx('d-xl num fit', over && 'neg')}>${N(over ? h.over : h.saved)}</div>
+          <div class="t-s">${over ? 'over budget' : 'left over'}</div>
+          <div class="recap-rows">
+            <div><span>Spent</span><b class="num">${N(h.spent)} of ${N(h.budget)}</b></div>
+            ${d.top && html`<div><span>Most went on</span><b>${L.cat(d.top).name} · ${d.topPct}%</b></div>`}
+            <div><span>Days logged</span><b>${d.days} of ${d.n}</b></div>
+            ${goal && goal.amount > 0 && html`<div><span>${goal.name}</span><b class="num">${Math.min(100, Math.round((st.savings || 0) / goal.amount * 100))}% there</b></div>`}
+          </div>
+        </div>`}
+      </div>
+      <div class="lf pad">
+        ${!img && html`<button class="btn btn-primary" onClick=${share}><${Icon} n="sparkle" size=${18} />Share my ${d.unit}</button>`}
+        <button class="btn btn-text" onClick=${function () { A.back(); A.tab('insights'); }}>See the full review</button>
+      </div>
+    </div>`;
+  }
+  // A goal for the money you didn't spend.
+  function GoalCard(p) {
+    var st = p.st, A = p.A, g = st.goal, saved = st.savings || 0;
+    var ed = useState(false), editing = ed[0], setEditing = ed[1];
+    var nm = useState(g ? g.name : ''), name = nm[0], setName = nm[1], am = useState(g ? N(g.amount) : ''), amt = am[0], setAmt = am[1];
+    var an = +digits(amt) || 0;
+    function save() { A.commit(function (x) { x.goal = { name: name.trim() || 'My goal', amount: an }; }); setEditing(false); A.sfx('chime'); stat('goal-set', true); }
+    if (editing) return html`<div class="card goal">
+      <div class="t-label">${g ? 'Edit your goal' : 'Give your left-over money a goal'}</div>
+      <input class="field" placeholder="What for? e.g. New phone" maxlength="28" value=${name} onInput=${function (e) { setName(e.target.value); }} />
+      <input class="field num" inputmode="numeric" placeholder="How much? e.g. ₦250,000" value=${amt} onInput=${function (e) { var v = +digits(e.target.value) || 0; setAmt(v ? N(v) : ''); }} />
+      <div class="btn-row"><button class="btn btn-outline btn-sm" onClick=${function () { setEditing(false); }}>Cancel</button>
+        ${g && html`<button class="btn btn-outline btn-sm" onClick=${function () { A.commit(function (x) { x.goal = null; }); setEditing(false); }}>Remove</button>`}
+        <button class="btn btn-primary btn-sm" disabled=${an < 1000} onClick=${save}>Save goal</button></div>
+    </div>`;
+    if (!g) return html`<div class="card goal">
+      <div class="goal-top"><span class="b-ic" style=${{ background: 'var(--emerald-soft)' }}><${Icon} n="target" size=${20} color="var(--emerald-deep)" /></span>
+        <div class="grow"><div class="t-label">Total left over</div><div class="t-cap muted">Money you didn’t spend, plus what you set aside</div></div><div class="t-title num">${N(saved)}</div></div>
+      <button class="btn btn-outline btn-sm" style=${{ alignSelf: 'flex-start' }} onClick=${function () { setEditing(true); }}>Give it a goal</button>
+    </div>`;
+    var pct = Math.min(1, saved / g.amount), done = saved >= g.amount;
+    return html`<div class="card goal">
+      <div class="goal-top"><span class="b-ic" style=${{ background: 'var(--emerald-soft)' }}><${Icon} n=${done ? 'check' : 'target'} size=${20} color="var(--emerald-deep)" /></span>
+        <div class="grow"><div class="t-label">${g.name}</div><div class="t-cap muted num">${done ? 'Goal reached. Nice work.' : N(g.amount - saved) + ' to go'}</div></div>
+        <button class="link" onClick=${function () { setEditing(true); }}>Edit</button></div>
+      <div class="goal-bar"><i style=${{ width: pct * 100 + '%' }}></i></div>
+      <div class="goal-nums num"><span>${N(saved)} left over</span><span>${Math.round(pct * 100)}% of ${N(g.amount)}</span></div>
     </div>`;
   }
   function BadgeGrid(p) {
@@ -1495,29 +1631,20 @@
   // Keeps allocations honest against the budget total: fix an overspend of the plan, or place unallocated money.
   function BalanceBar(p) {
     var cats = p.cats, total = p.total, sum = L.totalBudget(cats), gap = sum - total;
-    var pk = useState(false), picking = pk[0], setPicking = pk[1];
     if (!total) return null;
     if (gap === 0) return html`<div class="bal ok"><${Icon} n="check" size=${16} color="var(--emerald-deep)" /><span>All ${N(total)} is allocated</span></div>`;
     if (gap < 0) return html`<div class="bal">
-      <div class="bal-title">${N(-gap)} not allocated</div>
-      <div class="t-cap muted">Put it somewhere, or keep it spare. Spare money still counts in what’s left.</div>
-      <div class="bal-acts"><button class="btn btn-outline btn-sm" onClick=${function () { var n = Object.assign({}, cats); n.other = (+n.other || 0) - gap; p.onCats(n); }}>Put it in Other</button>
-        <span class="t-cap muted bal-ok">Or just save to keep it spare</span></div>
+      <div class="bal-title num">${N(-gap)} left to allocate</div>
+      <div class="t-cap muted">Add it to an allocation, put it in Other, or keep it spare. Spare money still counts in what’s left.</div>
+      ${sum > 0 && html`<div class="bal-acts"><button class="btn btn-outline btn-sm" onClick=${function () { var n = Object.assign({}, cats); n.other = (+n.other || 0) - gap; p.onCats(n); }}>Put it in Other</button></div>`}
     </div>`;
-    var donors = L.allCats().filter(function (c) { return (+cats[c.id] || 0) > 0 && p.focus !== c.id; }).sort(function (x, y) { return cats[y.id] - cats[x.id]; });
-    return html`<div class="bal over">
-      <div class="bal-title">${N(gap)} over your ${N(total)} budget</div>
-      ${picking ? html`<div class="t-cap muted">Take it from:</div>
-        <div class="bal-list">${donors.map(function (c) {
-          var take = Math.min(gap, +cats[c.id] || 0);
-          return html`<button class="bal-row" key=${c.id} onClick=${function () { var n = Object.assign({}, cats); n[c.id] = (+n[c.id] || 0) - take; p.onCats(n); if (take >= gap) setPicking(false); }}>
-            <${CatIcon} id=${c.id} size=${32} /><span class="grow">${c.name}<span class="t-cap muted num"> · ${N(cats[c.id])}</span></span><span class="chip">−${N(take)}</span></button>`;
-        })}</div>`
-      : html`<div class="bal-acts">
-        <button class="btn btn-primary btn-sm" onClick=${function () { setPicking(true); }}>Take it from other allocations</button>
-        <button class="btn btn-outline btn-sm" onClick=${function () { p.onTotal(sum); }}>Raise budget to ${N(sum)}</button></div>`}
+    return html`<div class="bal over" role="status" aria-live="polite">
+      <div class="bal-title num">${N(gap)} over your ${N(total)} budget</div>
+      <div class="t-cap">Lower your allocations to continue. This updates as you change them.</div>
+      <button class="link bal-raise" onClick=${function () { p.onTotal(sum); }}>Raise my budget to ${N(sum)} instead</button>
     </div>`;
   }
+  function fixLabel(cats, total, ok) { var gap = L.totalBudget(cats || {}) - total; return gap > 0 ? N(gap) + ' left to fix' : ok; }
   // A row you can swipe left to reveal "Remove".
   function SwipeRow(p) {
     var sd = useState(0), dx = sd[0], setDx = sd[1], drag = useRef(null), W = 96;
@@ -1552,8 +1679,11 @@
     }
     var rest = L.allCats().filter(function (x) { return open.indexOf(x.id) < 0; });
     return html`<div style=${{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div class="card total-card"><span class="t-s muted">Budget</span>
-        <span><span class="t-title num" style=${{ fontWeight: 600, fontSize: '22px' }}>${N(total)}</span><span class="t-s muted"> ${perUnit(p.unit)}</span></span></div>
+      <label class="card total-card" for="budget-total"><span class="t-s muted">Budget<span class="t-cap total-edit">${p.onTotal ? 'Tap to change' : ''}</span></span>
+        <span class="total-wrap">${p.onTotal ? html`<input id="budget-total" class="total-in num" inputmode="numeric" aria-label="Budget total" value=${total ? N(total) : ''} placeholder="₦0"
+            onInput=${function (e) { var v = Math.min(+digits(e.target.value) || 0, 999999999); p.onTotal(v); }} />`
+          : html`<span class="t-title num" style=${{ fontWeight: 600, fontSize: '22px' }}>${N(total)}</span>`}<span class="t-s muted"> ${perUnit(p.unit)}</span></span></label>
+      ${open.length === 0 && html`<div class="empty-alloc t-s muted">No allocations yet. Add your first one below, e.g. Food at home or Transport.</div>`}
       ${open.length > 1 && html`<div class="t-cap muted swipe-hint"><${Icon} n="left" size=${14} />Swipe left on an allocation to remove it</div>`}
       <div class="list">
         ${open.map(function (id) {
@@ -1606,22 +1736,14 @@
     return html`<div class="layer">
       <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Budget and allocations</div></div>
       <div class="lb pad">
-        ${editingTotal ? html`<div class="card" style=${{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <label class="t-label" for="new-total">New budget ${perUnit(s.unit)}</label>
-            <input id="new-total" class="field num" inputmode="numeric" placeholder=${N(total)} value=${draft}
-              onInput=${function (e) { var v = +digits(e.target.value) || 0; setDraft(v ? N(v) : ''); }} />
-            <div class="t-cap muted">Your allocations change in the same proportions.</div>
-            <div class="btn-row"><button class="btn btn-outline btn-sm" onClick=${function () { setEditingTotal(false); }}>Cancel</button>
-              <button class="btn btn-primary btn-sm" disabled=${tn < 1000} onClick=${function () { resplit(tn); setEditingTotal(false); setDraft(''); }}>Update</button></div>
-          </div>`
-          : html`<button class="link" style=${{ alignSelf: 'flex-start', padding: 0 }} onClick=${function () { setEditingTotal(true); }}>Change your budget total</button>`}
-        <${SplitEditor} key=${k} cats=${cats} total=${total} unit=${s.unit} onChange=${setCats} onEdit=${setFocus} st=${st} A=${A} spent=${s.byCat} />
+        <button class="link" style=${{ alignSelf: 'flex-start', padding: 0 }} onClick=${function () { setCats(L.autoSplit(total)); setK(k + 1); A.say('Suggested split applied'); }}>Use suggested split</button>
+        <${SplitEditor} key=${k} cats=${cats} total=${total} onTotal=${setTotal} unit=${s.unit} onChange=${setCats} onEdit=${setFocus} st=${st} A=${A} spent=${s.byCat} />
       </div>
       <div class="lf pad">
         <${BalanceBar} cats=${cats} total=${total} focus=${focus} onCats=${function (n) { setCats(n); setK(k + 1); }} onTotal=${setTotal} />
         <div class="scope"><span class="t-cap muted">Apply to</span>
           <${Seg} value=${scope} onChange=${setScope} options=${[{ v: 'week', label: 'This ' + u + ' only' }, { v: 'all', label: 'Every ' + u }]} /></div>
-        <button class="btn btn-primary" disabled=${over || total < 1000} onClick=${save}>${over ? 'Fix the difference first' : 'Save'}</button>
+        <button class="btn btn-primary" disabled=${over || total < 1000 || L.totalBudget(cats) <= 0} onClick=${save}>${fixLabel(cats, total, 'Save')}</button>
       </div>
     </div>`;
   }
@@ -1636,18 +1758,21 @@
     var sSeed = useState(0), seededFrom = sSeed[0], setSeeded = sSeed[1], sFoc = useState(null), focusId = sFoc[0], setFocusId = sFoc[1];
     var sRem = useState({ on: st.reminder.on, time: st.reminder.time }), reminder = sRem[0], setReminder = sRem[1];
     var n = +total || 0, u = unitWord(kind);
-    var steps = ['type', 'amount', 'split'].concat(first ? ['reminder'] : []);
+    var steps = ['type', 'amount', 'how', 'split'].concat(first ? ['reminder'] : []);
     var cur = steps[Math.min(step, steps.length - 1)], isLast = step >= steps.length - 1;
     function onKey(k) { setTotal(applyKey(total, k)); }
     useKeys(onKey, function () { if (n >= 1000) toSplit(); }, cur === 'amount');
     function next() { setStep(step + 1); }
-    function toSplit() { if (!cats || seededFrom !== n) { setCats(L.autoSplit(n)); setSeeded(n); } next(); }
+    var sHow = useState(null), how = sHow[0], setHow = sHow[1];
+    function toSplit() { next(); }
+    function chooseHow(v) { setHow(v); setCats(v === 'self' ? {} : L.autoSplit(n)); setSeeded(n); setFocusId(null); stat('split-' + v, true); next(); }
     function finish(rem) {
-      var b = L.newBudget({ name: 'My budget', kind: 'repeat', rhythm: kind, cats: cats, total: Math.max(n, L.totalBudget(cats)) }, now), r = rem && rem.time ? rem : reminder;
+      var full = {}; L.allCats().forEach(function (c) { full[c.id] = +cats[c.id] || 0; });
+      var b = L.newBudget({ name: 'My budget', kind: 'repeat', rhythm: kind, cats: full, total: Math.max(n, L.totalBudget(cats)) }, now), r = rem && rem.time ? rem : reminder;
       A.commit(function (x) { x.budgets = [b]; x.mainBid = b.id; x.lastBid = b.id; x.reminder = r; x.reminderAsked = true; x.sample = false; x.notifCardOff = true; });
       A.sfx('chime'); A.say('Your budget is ready'); stat('budget-created-' + kind, true); A.home();
     }
-    var cta = html`<button class="btn btn-primary" disabled=${!cats || L.totalBudget(cats) < 1000 || L.totalBudget(cats) > n} onClick=${finish}>Start budgeting</button>`;
+    var cta = html`<button class="btn btn-primary" disabled=${!cats || L.totalBudget(cats) <= 0 || L.totalBudget(cats) > n || n < 1000} onClick=${finish}>${fixLabel(cats, n, 'Start budgeting')}</button>`;
     var head = html`<div class="lh pad">
       <${Back} icon=${step === 0 ? 'x' : 'back'} label=${step === 0 ? 'Close' : 'Back'} onClick=${function () { if (step === 0) A.close(); else setStep(step - 1); }} />
       <div class="steps" aria-label=${'Step ' + (step + 1) + ' of ' + steps.length}>${steps.map(function (x, i) { return html`<i class=${i <= step ? 'on' : ''}></i>`; })}</div>
@@ -1677,12 +1802,23 @@
         <div class="pad"><${Keypad} onKey=${onKey} /></div>
       </div>`;
       foot = html`<button class="btn btn-primary" disabled=${n < 1000} onClick=${toSplit}>Continue</button>`;
+    } else if (cur === 'how') {
+      body = html`<div class="lb pad"><div><h1 class="h1">How do you want to split it?</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>Allocations are what you can spend on each thing every ${u}, like food or transport. They add up to your ${N(n)}.</p></div>
+        <div class="opts" role="radiogroup">
+          <button class=${cx('opt', how === 'suggest' && 'on')} role="radio" aria-checked=${how === 'suggest'} onClick=${function () { chooseHow('suggest'); }}>
+            <span class="radio"></span><span style=${{ flex: 1 }}><span class="t-label" style=${{ display: 'flex', gap: '8px', alignItems: 'center' }}>Suggest a split for me<span class="tag tag-good">Recommended</span></span>
+            <span class="t-s muted" style=${{ display: 'block', marginTop: '4px' }}>We fill in sensible amounts. You can change any of them.</span></span></button>
+          <button class=${cx('opt', how === 'self' && 'on')} role="radio" aria-checked=${how === 'self'} onClick=${function () { chooseHow('self'); }}>
+            <span class="radio"></span><span style=${{ flex: 1 }}><span class="t-label">I’ll set it myself</span>
+            <span class="t-s muted" style=${{ display: 'block', marginTop: '4px' }}>Start from nothing and add each allocation you want.</span></span></button>
+        </div></div>`;
+      foot = null;
     } else if (cur === 'split') {
-      body = html`<div class="lb pad"><div><h1 class="h1">Split it into allocations</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>An allocation is what you can spend on one thing each ${u}. We’ve made a start. Change any amount.</p></div>
-        <${SplitEditor} key=${'s' + seededFrom} cats=${cats} total=${n} unit=${kind} onChange=${setCats} onEdit=${setFocusId} st=${st} A=${A} /></div>`;
-      var splitOver = cats && L.totalBudget(cats) > n;
-      foot = html`<${BalanceBar} cats=${cats || {}} total=${n} focus=${focusId} onCats=${setCats} onTotal=${function (v) { setTotal(String(v)); setSeeded(v); }} />
-        ${isLast ? cta : html`<button class="btn btn-primary" disabled=${splitOver || L.totalBudget(cats) < 1000} onClick=${next}>${splitOver ? 'Fix the difference first' : 'Continue'}</button>`}`;
+      body = html`<div class="lb pad"><div><h1 class="h1">${how === 'self' ? 'Add your allocations' : 'Split it into allocations'}</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>${how === 'self' ? 'Add what you spend on each ' + u + ' and how much. They should add up to your budget.' : 'An allocation is what you can spend on one thing each ' + u + '. We’ve made a start. Change any amount.'}</p></div>
+        <${SplitEditor} key=${'s' + how} cats=${cats || {}} total=${n} onTotal=${function (v) { setTotal(v ? String(v) : ''); }} unit=${kind} onChange=${setCats} onEdit=${setFocusId} st=${st} A=${A} /></div>`;
+      var splitOver = cats && L.totalBudget(cats) > n, noneYet = !cats || L.totalBudget(cats) <= 0;
+      foot = html`<${BalanceBar} cats=${cats || {}} total=${n} focus=${focusId} onCats=${setCats} onTotal=${function (v) { setTotal(String(v)); }} />
+        ${isLast ? cta : html`<button class="btn btn-primary" disabled=${splitOver || noneYet || n < 1000} onClick=${next}>${noneYet ? 'Add an allocation to continue' : fixLabel(cats, n, 'Continue')}</button>`}`;
     } else if (notifyState() === 'default' || notifyState() === 'install') {
       var ios = notifyState() === 'install';
       body = html`<div class="lb pad">
@@ -1751,8 +1887,10 @@
   function AddFlow(p) {
     var st = p.st, A = p.A, now = p.now, today = L.dkey(now), pre = p.preset || {}, close = p.onClose || A.close;
     var b = L.mainBudget(st), s = b ? L.status(st, b, now) : null;
-    var sStep = useState('amount'), step = sStep[0], setStep = sStep[1];
+    var sStep = useState(pre.alert != null ? 'paste' : 'amount'), step = sStep[0], setStep = sStep[1];
     var sAmt = useState(pre.amount ? String(pre.amount) : ''), amt = sAmt[0], setAmt = sAmt[1];
+    var sTxt = useState(pre.alert || ''), alertText = sTxt[0], setAlertText = sTxt[1];
+    var quick = L.frequent(st, now, 4);
     var sCat = useState(pre.cat || null), catId = sCat[0], setCat = sCat[1];
     var sNote = useState(''), note = sNote[0], setNote = sNote[1];
     var sDay = useState(today), day = sDay[0], setDay = sDay[1];
@@ -1764,8 +1902,20 @@
     useKeys(onKey, afterAmount, step === 'amount');
     function back() { if (at <= 0) close(); else setStep(order[at - 1]); }
     function reset() { setStep('amount'); setAmt(''); setCat(pre.cat || null); setNote(''); setDay(today); setSaved(null); }
-    function save() {
-      var e = { id: L.uid(), type: 'out', amount: n, note: note.trim(), ts: tsFor(day, today, now), cat: catId || 'other', work: false, bid: b.id };
+    function useAlert(r) {
+      setAmt(String(r.amount)); setNote(r.note || ''); setDay(today);
+      if (r.cat) { setCat(r.cat); setStep('check'); } else setStep('cat');
+      stat('alert-used', true);
+    }
+    function undo() {
+      var id = saved && saved.id; if (!id) return;
+      A.commit(function (x) { x.entries = x.entries.filter(function (q) { return q.id !== id; }); });
+      A.say('Removed'); close();
+    }
+    function save(q) {
+      q = q || {};
+      var e = { id: L.uid(), type: 'out', amount: q.amount || n, note: (q.note != null ? q.note : note).trim(), ts: tsFor(q.day || day, today, now), cat: q.cat || catId || 'other', work: false, bid: b.id };
+      if (q.quick) stat('log-quick', true);
       A.commit(function (x) { x.entries.push(e); x.lastBid = b.id; }); stat('log-purchase', true);
       var x2 = clone(st); x2.entries.push(e); var s2 = L.status(x2, L.findBudget(x2, b.id), now);
       var p2 = s2.pots.filter(function (q) { return q.id === e.cat; })[0];
@@ -1802,11 +1952,12 @@
         <div class="lh pad"><span style=${{ flex: 1 }}></span><${Back} icon="x" label="Close" onClick=${close} /></div>
         <div class="saved pad">
           <span class="check-big"><${Icon} n="check" size=${34} /></span>
-          <div class="t-label" style=${{ marginBottom: '4px' }}>Logged</div>
+          <div class="t-label" style=${{ marginBottom: '4px' }}>Logged${e.note ? ' · ' + e.note : ''}</div>
           ${body}${extra}
           ${streak > 0 && html`<div class="t-s streak-line"><${Icon} n="fire" size=${16} color="var(--warning)" />${streak}-day streak</div>`}
         </div>
-        <div class="lf pad"><button class="btn btn-primary" onClick=${close}>Done</button><button class="btn btn-text" onClick=${reset}>Log another</button></div>
+        <div class="lf pad"><button class="btn btn-primary" onClick=${close}>Done</button>
+          <div class="saved-links"><button class="btn btn-text" onClick=${reset}>Log another</button><button class="btn btn-text muted" onClick=${undo}>Undo</button></div></div>
       </div>`;
     }
 
@@ -1844,12 +1995,37 @@
       </div>`;
     }
 
+    if (step === 'paste') {
+      var r = alertText.trim() ? L.parseAlert(alertText) : null, canRead = !!(navigator.clipboard && navigator.clipboard.readText);
+      return html`<div class="layer up">
+        <div class="lh pad"><${Back} onClick=${function () { if (pre.alert != null) close(); else setStep('amount'); }} /><div class="lh-title">Log from a bank alert</div></div>
+        <div class="lb pad step-in">
+          <p class="t-s muted" style=${{ margin: 0 }}>Copy the debit alert your bank sent (SMS or email) and paste it here. Budge picks out the amount and where you paid.</p>
+          ${canRead && html`<button class="btn btn-outline" onClick=${function () { navigator.clipboard.readText().then(function (t) { setAlertText(t || ''); }, function () { A.say('Paste it into the box instead'); }); }}><${Icon} n="list" size=${18} />Paste from clipboard</button>`}
+          <textarea class="field alert-box" rows="5" placeholder="e.g. Debit Alert! Amt:NGN3,500.00 Desc:POS PURCHASE SHAWARMA HUB LEKKI Bal:NGN45,210.33" value=${alertText} onInput=${function (ev) { setAlertText(ev.target.value); }}></textarea>
+          ${r && (r.error ? html`<div class="alert-res bad"><b>Couldn’t find an amount</b><span class="t-cap muted">Check it’s the whole alert, including the amount.</span></div>`
+            : r.credit ? html`<div class="alert-res bad"><b>This looks like money coming in</b><span class="t-cap muted">Budge only tracks what you spend.</span></div>`
+            : html`<div class="alert-res">
+                <${CatIcon} id=${r.cat || 'other'} size=${40} />
+                <div class="grow"><div class="t-label">${r.note || 'Purchase'}</div><div class="t-cap muted">${r.cat ? L.cat(r.cat).name : 'You’ll pick the allocation next'}</div></div>
+                <div class="sum-amt num">${N(r.amount)}</div></div>`)}
+        </div>
+        <div class="lf pad"><button class="btn btn-primary" disabled=${!r || r.error || r.credit} onClick=${function () { useAlert(r); }}>Continue</button></div>
+      </div>`;
+    }
     var hint = !s ? html`<span class="hint muted">No budget is running today</span>`
       : s.mode === 'over' ? html`<span class="hint"><span class="dot" style=${{ background: 'var(--critical)' }}></span>${N(-s.left)} over${per}</span>`
       : html`<span class="hint"><span class="dot" style=${{ background: s.mode === 'low' ? 'var(--warning)' : 'var(--emerald)' }}></span>${N(s.left)} left${per}</span>`;
     return html`<div class="layer up">${head}
       <div class="lb lb-amount">
         <div class="pad"><h1 class="h1">How much did you spend?</h1></div>
+        ${!pre.cat && html`<div class="quick-row" role="list" aria-label="Quick add">
+          ${quick.map(function (q) {
+            return html`<button class="qa" role="listitem" key=${q.note + q.amount} onClick=${function () { save({ amount: q.amount, note: q.note, cat: q.cat, day: today, quick: true }); }}>
+              <${CatIcon} id=${q.cat} size=${28} /><span class="qa-txt"><b>${q.note}</b><span class="num">${N(q.amount)}</span></span></button>`;
+          })}
+          <button class="qa qa-paste" role="listitem" onClick=${function () { setStep('paste'); }}><span class="qa-ic"><${Icon} n="list" size=${16} /></span><span class="qa-txt"><b>Bank alert</b><span>Paste it</span></span></button>
+        </div>`}
         <div class="amount-wrap pad"><${BigAmount} value=${amt} />${hint}</div>
         <div class="pad"><${Keypad} onKey=${onKey} /></div>
       </div>
@@ -2076,6 +2252,13 @@
     SFX.enabled = st.sound !== false;
     var budget = L.mainBudget(st);
     var desk = useDesk();
+    // After an update has been applied: show what's new once (never to brand-new users).
+    var sJust = useState(function () {
+      var prev = null; try { prev = localStorage.getItem('budge-run-version'); localStorage.setItem('budge-run-version', LATEST); } catch (e) { }
+      if (!LATEST || !boot.current.had || !prev || prev === LATEST) return null;
+      var notes = []; LOG.some(function (r) { if (r.version === prev) return true; notes = notes.concat(r.notes); return false; });
+      return { version: LATEST, title: LOG[0].title, notes: notes.slice(0, 5) };
+    }), justUpdated = sJust[0], setJustUpdated = sJust[1];
     var sNew = useState(function () { var v = seenVersion(); if (v === null && !boot.current.had) { markSeen(); return false; } return !!LATEST && v !== LATEST; }), newUnseen = sNew[0], setNewUnseen = sNew[1];
 
     function commit(fn) { var s = clone(ref.current); fn(s); s.updatedAt = Date.now(); ref.current = s; setSt(s); Persist.schedule(s); }
@@ -2108,10 +2291,13 @@
       try { (due ? navigator.setAppBadge(1) : navigator.clearAppBadge()).catch(function () { }); } catch (e) { }
     });
     // Opened from a notification or the home-screen shortcut: go straight to logging.
+    // Shared to Budge from another app (Android share sheet): read it as a bank alert.
     useEffect(function () {
-      if (!ready || !budget || !/[?&]add=1/.test(location.search)) return;
+      if (!ready || !budget) return;
+      var q = new URLSearchParams(location.search), shared = [q.get('title'), q.get('text'), q.get('url')].filter(Boolean).join('\n');
+      if (!shared && q.get('add') !== '1') return;
       try { history.replaceState(null, '', location.pathname); } catch (e) { }
-      A.add();
+      if (shared) { stat('alert-shared', true); A.add({ alert: shared }); } else A.add();
     }, [ready]);
     // Tell the reminder server about the reminder time, on/off, and the last day something was logged.
     var pushKey = Push.on() ? [st.reminder.on, st.news !== false, st.reminder.time, st.entries.length, (st.checkins || []).length, L.dkey(now)].join('|') : '';
@@ -2233,6 +2419,7 @@
         var lb = layer.bid ? L.findBudget(st, layer.bid) : budget;
         if (layer.type === 'add') lay = html`<${AddFlow} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} onClose=${layer.prev ? A.back : A.close} />`;
         else if (layer.type === 'create') lay = html`<${CreateBudget} key=${layer.k} st=${st} now=${now} A=${A} preset=${layer.preset} />`;
+        else if (layer.type === 'recap' && budget) lay = html`<${RecapLayer} st=${st} b=${budget} A=${A} />`;
         else if (layer.type === 'whatsnew') lay = html`<${WhatsNew} A=${A} onSeen=${function () { setNewUnseen(false); }} />`;
         else if (layer.type === 'feedback') lay = html`<${FeedbackLayer} st=${st} A=${A} />`;
         else if (layer.type === 'edit') lay = html`<${EditEntry} key=${layer.id} st=${st} now=${now} A=${A} id=${layer.id} />`;
@@ -2255,12 +2442,20 @@
           <div style=${{ flex: 1, minWidth: 0 }}><div class="n-top"><span>Budge</span><span>now</span></div>
             <b>Anything to log today?</b><span>${streakN > 0 ? 'Tap to add it and keep your ' + streakN + '-day streak.' : 'Tap to add what you spent.'}</span></div>
         </button>`}
+        ${justUpdated && html`<div class="modal-wrap wn-modal"><div class="scrim" onClick=${function () { markSeen(); setNewUnseen(false); setJustUpdated(null); }}></div>
+          <div class="wn-card" role="dialog" aria-label="What’s new">
+            <${Logo} size=${48} />
+            <div class="t-cap muted">Budge ${justUpdated.version}</div>
+            <h2 class="h2" style=${{ margin: 0 }}>What’s new</h2>
+            <ul class="wn-notes">${justUpdated.notes.map(function (n) { return html`<li>${n}</li>`; })}</ul>
+            <button class="btn btn-primary" onClick=${function () { markSeen(); setNewUnseen(false); setJustUpdated(null); }}>Got it</button>
+            <button class="btn btn-text" onClick=${function () { markSeen(); setNewUnseen(false); setJustUpdated(null); A.open({ type: 'whatsnew' }); }}>See all updates</button>
+          </div></div>`}
         ${toast && html`<div class=${cx('toast', toast.undo && 'toast-undo')} key=${toast.k} role="status"><span>${toast.m}</span>
           ${toast.undo && html`<button class="toast-act" onClick=${function () { toast.undo(); setToast(null); }}>Undo</button>`}</div>`}
         ${upd && html`<div class="update-card" role="dialog" aria-label="Update available">
-          <div class="update-top"><${Logo} size=${36} /><div class="grow"><div class="t-label">Budge has been updated</div>
-            ${upd.version && html`<div class="t-cap muted">Version ${upd.version}</div>`}</div></div>
-          ${upd.notes && upd.notes.length > 0 && html`<ul class="update-notes">${upd.notes.slice(0, 3).map(function (n) { return html`<li>${n}</li>`; })}</ul>`}
+          <div class="update-top"><${Logo} size=${36} /><div class="grow"><div class="t-label">A new version of Budge is ready</div>
+            <div class="t-cap muted">Refresh to get it${upd.version ? ' (version ' + upd.version + ')' : ''}. It takes a second.</div></div></div>
           <div class="btn-row"><button class="btn btn-outline btn-sm" onClick=${function () { setUpd(null); }}>Later</button>
             <button class="btn btn-primary btn-sm" onClick=${function () { location.reload(); }}>Refresh</button></div>
         </div>`}

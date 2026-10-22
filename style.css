@@ -670,3 +670,50 @@ body { background: var(--ground); color: var(--ink); }
 .notif { background: var(--surface) !important; }
 .seg button.on { background: var(--surface); color: var(--ink); }
 .appearance .seg { flex: none; }
+
+/* ---------- v15 preview: quick add, bank alert, recap, goal ---------- */
+.quick-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 20px 2px; scrollbar-width: none; flex: none; }
+.quick-row::-webkit-scrollbar { display: none; }
+.qa { display: flex; align-items: center; gap: 8px; flex: none; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-line); max-width: 210px; }
+.qa:active { transform: scale(.97); }
+.qa-txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; min-width: 0; }
+.qa-txt b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.qa-txt span { font-size: 12px; color: var(--muted); }
+.qa-ic { width: 28px; height: 28px; border-radius: 50%; background: var(--surface); border: 1px solid var(--panel-line); display: inline-flex; align-items: center; justify-content: center; }
+.saved-links { display: flex; justify-content: center; gap: 8px; }
+.saved-links .btn { width: auto; padding-inline: 16px; }
+.alert-box { height: auto; min-height: 120px; padding: 14px 16px; line-height: 1.45; resize: vertical; font-family: inherit; }
+.alert-res { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; background: var(--panel); border: 1px solid var(--panel-line); }
+.alert-res .grow { flex: 1; min-width: 0; }
+.alert-res.bad { flex-direction: column; align-items: flex-start; gap: 2px; background: var(--warning-soft); border-color: transparent; }
+.recap { border-radius: 28px; background: var(--emerald-soft); padding: 24px; display: flex; flex-direction: column; gap: 4px; }
+.recap-range { color: var(--ink-2); font-weight: 500; margin-bottom: 8px; }
+.recap-rows { display: flex; flex-direction: column; margin-top: 20px; border-top: 1px solid rgba(11, 15, 13, .08); }
+.recap-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(11, 15, 13, .08); font-size: 15px; }
+.recap-rows span { color: var(--ink-2); }
+.recap-rows b { font-weight: 600; text-align: right; }
+.recap-img { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.recap-img img { width: 100%; max-width: 360px; border-radius: 20px; box-shadow: var(--shadow); -webkit-touch-callout: default; }
+.goal { display: flex; flex-direction: column; gap: 12px; }
+.goal-top { display: flex; align-items: center; gap: 12px; }
+.goal-top .grow { flex: 1; min-width: 0; }
+.goal-bar { height: 10px; border-radius: 10px; background: var(--track); overflow: hidden; }
+.goal-bar i { display: block; height: 100%; border-radius: 10px; background: linear-gradient(90deg, #12B76A, #0B8A4F); transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.goal-nums { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.proto-link { font-size: 13px; color: var(--muted); height: 36px; }
+
+/* ---------- v16 preview: split choice, editable total, what's new card ---------- */
+.opts { display: flex; flex-direction: column; gap: 10px; }
+.total-card { cursor: text; }
+.total-card > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+.total-edit { color: var(--muted); }
+.total-wrap { display: flex; align-items: baseline; gap: 2px; }
+.total-in { width: 150px; text-align: right; border: 0; background: transparent; font: inherit; font-size: 22px; font-weight: 600; color: var(--ink); padding: 4px 0; border-bottom: 1.5px dashed var(--faint); border-radius: 0; }
+.total-in:focus { outline: none; border-bottom-color: var(--emerald); }
+.empty-alloc { padding: 18px; border-radius: 16px; border: 1.5px dashed var(--line); text-align: center; }
+.bal-raise { padding: 2px 0 0; align-self: flex-start; font-size: 13px; color: var(--critical-deep); text-decoration: underline; text-underline-offset: 2px; }
+.wn-modal { position: absolute; z-index: 80; padding: 20px; }
+.wn-card { position: relative; width: 100%; max-width: 360px; background: var(--surface); border-radius: 28px; padding: 24px 20px 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; box-shadow: 0 30px 80px rgba(0, 0, 0, .3); animation: slideUp .3s cubic-bezier(.2, .8, .2, 1); }
+.wn-card .wn-notes { margin: 4px 0 12px; }
+.wn-card .btn { width: 100%; }
+.total-wrap .t-s { margin-left: 6px; white-space: nowrap; }
