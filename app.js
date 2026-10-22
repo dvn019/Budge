@@ -105,6 +105,7 @@
       bannerSeen: null, reviewSeen: null, done: {}, createdAt: now
     };
     if (b.kind === 'repeat') { b.periodStart = periodStart(b.rhythm, today); b.start = null; b.end = null; }
+    b.total = o.total != null ? +o.total : totalBudget(b.cats);
     return b;
   }
   function findBudget(state, id) {
@@ -113,6 +114,19 @@
   }
   function unitOf(b) { return b.kind === 'once' ? 'once' : b.rhythm; }
   function totalBudget(c) { var s = 0; for (var k in (c || {})) s += (+c[k] || 0); return s; }
+  // The budget total is its own number: allocations split it, they don't define it.
+  // (Older budgets have no total yet, so it falls back to the sum of their allocations.)
+  function planTotal(b) { return b.total != null ? +b.total : totalBudget(b.cats); }
+  function periodTotal(b, start) { return planTotal(b) + (b.adj && b.adj.start === start ? (+b.adj.t || 0) : 0); }
+  // Change this period only: new allocations and total, stored as differences from the plan.
+  function setPeriod(b, start, cats, total) {
+    var d = {}; allCats().forEach(function (c) { var v = (+cats[c.id] || 0) - (+b.cats[c.id] || 0); if (v) d[c.id] = v; });
+    b.adj = { start: start, d: d, t: total - planTotal(b) };
+  }
+  function raisePeriod(b, start, amt) {
+    if (!b.adj || b.adj.start !== start) b.adj = { start: start, d: {}, t: 0 };
+    b.adj.t = (+b.adj.t || 0) + amt;
+  }
   function autoSplit(total) {
     var step = total >= 20000 ? 500 : 100, c = {}, s = 0;
     Object.keys(SPLIT).forEach(function (id) { c[id] = Math.floor(total * SPLIT[id] / step) * step; s += c[id]; });
@@ -228,6 +242,7 @@
   function saveFromPot(state, b, start, id, amt) {
     if (!b.adj || b.adj.start !== start) b.adj = { start: start, d: {} };
     b.adj.d[id] = (b.adj.d[id] || 0) - amt;
+    b.adj.t = (+b.adj.t || 0) - amt; // set aside money leaves this period's total
     state.savings = (state.savings || 0) + amt;
   }
   function potsOf(state, cats, byCat) {
@@ -244,7 +259,7 @@
   // Live numbers for a budget's current period (or its whole span, for a one-off).
   function status(state, b, now) {
     var today = dkey(now), r = currentRange(b, today), phase = phaseOf(b, today);
-    var cats = potCats(b, r.start), budget = totalBudget(cats);
+    var cats = potCats(b, r.start), budget = periodTotal(b, r.start), allocated = totalBudget(cats);
     var ents = ofBudget(state, b).filter(function (e) { return inRange(e, r.start, r.end); });
     var pers = ents.filter(personalOut);
     var spentToday = 0, spentOther = 0;
@@ -260,7 +275,7 @@
       today: today, start: r.start, end: r.end, unit: unitOf(b), phase: phase, budget: budget, spent: spent, left: left,
       spentToday: spentToday, daysLeft: daysLeft, share: share, safeToday: safeToday,
       safeShown: mode === 'ok' ? down50(safeToday) : 0, overToday: safeToday < 0 ? up50(-safeToday) : 0, perDay: down50(share),
-      mode: mode, byCat: byCat, cats: cats, pots: pots, pace: pace,
+      mode: mode, byCat: byCat, cats: cats, pots: pots, pace: pace, allocated: allocated, spare: budget - allocated,
       work: sum(ents.filter(function (e) { return e.type === 'out' && e.work; })),
       todayEntries: ents.filter(function (e) { return entryDay(e) === today; }).sort(byNewest),
       nextStart: b.kind === 'once' ? null : addDays(r.end, 1)
@@ -323,7 +338,7 @@
 
   // ---------- periods, rollover, savings ----------
   function summarize(state, b, ps, pe) {
-    var cats = potCats(b, ps), budget = totalBudget(cats);
+    var cats = potCats(b, ps), budget = periodTotal(b, ps);
     var ents = ofBudget(state, b).filter(function (e) { return inRange(e, ps, pe); });
     var pers = ents.filter(personalOut), spent = sum(pers);
     var active = ents.length > 0 || (b.kind === 'repeat' && (state.checkins || []).some(function (k) { return k >= ps && k <= pe; }));
@@ -391,9 +406,10 @@
     allCats().forEach(function (c) { var v = +base[c.id] || 0; cats[c.id] = f === 1 ? v : roundTo(v * f, 50); });
     var ents = ofBudget(state, b).filter(function (e) { return inRange(e, start, end); }).sort(byNewest);
     var pers = ents.filter(personalOut), spent = sum(pers);
+    var tot = b.kind === 'once' ? totalBudget(cats) : hist ? hist.budget : f === 1 ? periodTotal(b, start) : roundTo(planTotal(b) * f, 50);
     return {
       start: start, end: end, unit: unit, offset: offset, label: rangeLabel(start, end, unit === 'once' ? 'week' : unit),
-      budget: totalBudget(cats), budgets: cats, spent: spent, left: totalBudget(cats) - spent,
+      budget: tot, budgets: cats, spent: spent, left: tot - spent,
       byCat: catTotals(pers), entries: ents, work: sum(ents.filter(function (e) { return e.type === 'out' && e.work; })),
       isCurrent: start <= today && today <= end, scaled: f !== 1
     };
@@ -575,7 +591,7 @@
     daysInMonth: daysInMonth, periodStart: periodStart, periodEnd: periodEnd, shiftPeriod: shiftPeriod,
     rangeLabel: rangeLabel, dayLabel: dayLabel, shortDate: shortDate, weekdayName: weekdayName, timeLabel: timeLabel, hhmm: hhmm, time12: time12,
     naira: naira, short: short, roundTo: roundTo, uid: uid, blankState: blankState, newBudget: newBudget, findBudget: findBudget,
-    unitOf: unitOf, phaseOf: phaseOf, totalBudget: totalBudget, autoSplit: autoSplit, convertBudgets: convertBudgets, migrate: migrate,
+    unitOf: unitOf, phaseOf: phaseOf, totalBudget: totalBudget, planTotal: planTotal, periodTotal: periodTotal, setPeriod: setPeriod, raisePeriod: raisePeriod, autoSplit: autoSplit, convertBudgets: convertBudgets, migrate: migrate,
     entryDay: entryDay, personalOut: personalOut, catTotals: catTotals, ofBudget: ofBudget, streak: streak, loggedOn: loggedOn, bestStreak: bestStreak, badges: badges,
     status: status, monthSummary: monthSummary, summarize: summarize, needsRollover: needsRollover, anyRollover: anyRollover,
     rollover: rollover, rolloverAll: rolloverAll, rangeView: rangeView, pattern: pattern, review: review,
@@ -1403,12 +1419,12 @@
     </div>`;
   }
   function BudgetSettings(p) {
-    var st = p.st, b = p.b, A = p.A, now = p.now, total = L.totalBudget(b.cats);
+    var st = p.st, b = p.b, A = p.A, now = p.now, total = L.planTotal(b);
     var pots = L.allCats().filter(function (c) { return b.cats[c.id] > 0; }).length;
     function setRhythm(r) {
       if (r === b.rhythm) return;
       var today = L.dkey(now), nb = L.convertBudgets(b.cats, r, today);
-      A.commitB(b.id, function (x) { x.rhythm = r; x.cats = nb; x.periodStart = L.periodStart(r, today); });
+      A.commitB(b.id, function (x) { x.rhythm = r; x.cats = nb; x.total = L.totalBudget(nb); x.adj = null; x.periodStart = L.periodStart(r, today); });
       A.say('Your budget is now ' + N(L.totalBudget(nb)) + ' ' + perUnit(r));
     }
     return html`<div class="pad tabpad">
@@ -1439,6 +1455,10 @@
         <${Confirm} label="Load the sample week" question="This replaces your data with a sample week." yes="Load sample" onYes=${A.loadSample} />
         <${Confirm} label="Start over" danger=${true} meta="Delete your budget and every record" question="Delete everything and start again?" yes="Delete all" onYes=${A.startOver} />
       </div></div>`}
+      <div><div class="group-title">Appearance</div><div class="group">
+        <div class="row appearance"><div class="grow"><div class="name">Theme</div><div class="meta">Auto follows your phone</div></div>
+          <${Seg} value=${st.theme || 'auto'} onChange=${function (v) { A.commit(function (x) { x.theme = v; }); }} options=${[{ v: 'auto', label: 'Auto' }, { v: 'light', label: 'Light' }, { v: 'dark', label: 'Dark' }]} /></div>
+      </div></div>
       ${LOG.length > 0 && html`<div><div class="group-title">About</div><div class="group">
         <button class="row" onClick=${function () { A.open({ type: 'whatsnew' }); }}><div class="grow"><div class="name">What’s new</div><div class="meta">Version ${LATEST} · ${LOG[0].title}</div></div>
           ${p.unseen && html`<span class="dot dot-inline" aria-label="New"></span>`}<${Icon} n="right" size=${16} color="var(--faint)" /></button>
@@ -1472,6 +1492,32 @@
       <button class="btn btn-dark" disabled=${!name.trim()} onClick=${add}>Add allocation</button>
     </div>`;
   }
+  // Keeps allocations honest against the budget total: fix an overspend of the plan, or place unallocated money.
+  function BalanceBar(p) {
+    var cats = p.cats, total = p.total, sum = L.totalBudget(cats), gap = sum - total;
+    var pk = useState(false), picking = pk[0], setPicking = pk[1];
+    if (!total) return null;
+    if (gap === 0) return html`<div class="bal ok"><${Icon} n="check" size=${16} color="var(--emerald-deep)" /><span>All ${N(total)} is allocated</span></div>`;
+    if (gap < 0) return html`<div class="bal">
+      <div class="bal-title">${N(-gap)} not allocated</div>
+      <div class="t-cap muted">Put it somewhere, or keep it spare. Spare money still counts in what’s left.</div>
+      <div class="bal-acts"><button class="btn btn-outline btn-sm" onClick=${function () { var n = Object.assign({}, cats); n.other = (+n.other || 0) - gap; p.onCats(n); }}>Put it in Other</button>
+        <span class="t-cap muted bal-ok">Or just save to keep it spare</span></div>
+    </div>`;
+    var donors = L.allCats().filter(function (c) { return (+cats[c.id] || 0) > 0 && p.focus !== c.id; }).sort(function (x, y) { return cats[y.id] - cats[x.id]; });
+    return html`<div class="bal over">
+      <div class="bal-title">${N(gap)} over your ${N(total)} budget</div>
+      ${picking ? html`<div class="t-cap muted">Take it from:</div>
+        <div class="bal-list">${donors.map(function (c) {
+          var take = Math.min(gap, +cats[c.id] || 0);
+          return html`<button class="bal-row" key=${c.id} onClick=${function () { var n = Object.assign({}, cats); n[c.id] = (+n[c.id] || 0) - take; p.onCats(n); if (take >= gap) setPicking(false); }}>
+            <${CatIcon} id=${c.id} size=${32} /><span class="grow">${c.name}<span class="t-cap muted num"> · ${N(cats[c.id])}</span></span><span class="chip">−${N(take)}</span></button>`;
+        })}</div>`
+      : html`<div class="bal-acts">
+        <button class="btn btn-primary btn-sm" onClick=${function () { setPicking(true); }}>Take it from other allocations</button>
+        <button class="btn btn-outline btn-sm" onClick=${function () { p.onTotal(sum); }}>Raise budget to ${N(sum)}</button></div>`}
+    </div>`;
+  }
   // A row you can swipe left to reveal "Remove".
   function SwipeRow(p) {
     var sd = useState(0), dx = sd[0], setDx = sd[1], drag = useRef(null), W = 96;
@@ -1492,10 +1538,12 @@
   function SplitEditor(p) {
     var c = p.cats;
     var op = useState(function () { return L.allCats().filter(function (x) { return c[x.id] > 0; }).map(function (x) { return x.id; }); });
-    var open = op[0], setOpen = op[1];
+    var open0 = op[0], setOpen = op[1];
+    // Anything given money elsewhere (e.g. "Put it in Other") shows up even if it was removed here.
+    var open = open0.concat(L.allCats().filter(function (x) { return c[x.id] > 0 && open0.indexOf(x.id) < 0; }).map(function (x) { return x.id; }));
     var np = useState(false), adding = np[0], setAdding = np[1];
-    var total = L.totalBudget(c);
-    function setV(id, v) { var n = Object.assign({}, c); n[id] = Math.min(+digits(v) || 0, 99999999); p.onChange(n); }
+    var total = p.total != null ? p.total : L.totalBudget(c), allocated = L.totalBudget(c);
+    function setV(id, v) { var n = Object.assign({}, c); n[id] = Math.min(+digits(v) || 0, 99999999); p.onChange(n); if (p.onEdit) p.onEdit(id); }
     function focus(id) { setTimeout(function () { var el = document.getElementById('sp-' + id); if (el) el.focus(); }, 40); }
     function remove(id) {
       var prevC = c, prevOpen = open, n = Object.assign({}, c), sp = p.spent && p.spent[id];
@@ -1504,7 +1552,7 @@
     }
     var rest = L.allCats().filter(function (x) { return open.indexOf(x.id) < 0; });
     return html`<div style=${{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div class="card total-card"><span class="t-s muted">Total</span>
+      <div class="card total-card"><span class="t-s muted">Budget</span>
         <span><span class="t-title num" style=${{ fontWeight: 600, fontSize: '22px' }}>${N(total)}</span><span class="t-s muted"> ${perUnit(p.unit)}</span></span></div>
       ${open.length > 1 && html`<div class="t-cap muted swipe-hint"><${Icon} n="left" size=${14} />Swipe left on an allocation to remove it</div>`}
       <div class="list">
@@ -1529,13 +1577,15 @@
     </div>`;
   }
   function SplitLayer(p) {
-    var b = p.b, A = p.A;
-    var cs = useState(function () { return clone(b.cats); }), cats = cs[0], setCats = cs[1];
-    var t = useState(''), total = t[0], setTotal = t[1];
-    var tn = +digits(total) || 0;
-    var kk = useState(0), k = kk[0], setK = kk[1];
-    function resplit() {
-      if (tn < 1000) return;
+    var b = p.b, A = p.A, st = p.st, s = L.status(st, b, Date.now()), u = unitWord(s.unit);
+    var cs = useState(function () { return clone(s.cats); }), cats = cs[0], setCats = cs[1];
+    var ts = useState(s.budget), total = ts[0], setTotal = ts[1];
+    var sc = useState('week'), scope = sc[0], setScope = sc[1];
+    var ed = useState(false), editingTotal = ed[0], setEditingTotal = ed[1];
+    var dt = useState(''), draft = dt[0], setDraft = dt[1];
+    var kk = useState(0), k = kk[0], setK = kk[1], fe = useState(null), focus = fe[0], setFocus = fe[1];
+    var over = L.totalBudget(cats) > total;
+    function resplit(tn) {
       var cur = L.totalBudget(cats), next = {};
       if (!cur) next = L.autoSplit(tn);
       else {
@@ -1543,25 +1593,36 @@
         L.allCats().forEach(function (c) { var v = +cats[c.id] || 0; next[c.id] = v ? Math.floor(v / cur * tn / 100) * 100 : 0; acc += next[c.id]; if (v) lastId = c.id; });
         next[lastId] += tn - acc;
       }
-      setCats(next); setTotal(''); setK(k + 1);
+      setCats(next); setTotal(tn); setK(k + 1);
     }
+    function save() {
+      A.commitB(b.id, function (x) {
+        if (scope === 'week') L.setPeriod(x, s.start, cats, total);
+        else { x.cats = cats; x.total = total; x.adj = null; }
+      });
+      A.say(scope === 'week' ? 'Saved for this ' + u : 'Saved for every ' + u); A.back();
+    }
+    var tn = +digits(draft) || 0;
     return html`<div class="layer">
-      <div class="lh pad"><${Back} onClick=${A.close} /><div class="lh-title">Allocations</div></div>
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Budget and allocations</div></div>
       <div class="lb pad">
-        <div>
-          <label class="t-s muted" for="new-total">New total</label>
-          <div class="field-row" style=${{ marginTop: '8px', flexWrap: 'nowrap' }}>
-            <input id="new-total" class="field num" inputmode="numeric" placeholder=${N(L.totalBudget(cats))} value=${total}
-              onInput=${function (e) { var d = +digits(e.target.value) || 0; setTotal(d ? N(d) : ''); }} />
-            <button class="btn btn-dark btn-sm" style=${{ height: '52px' }} disabled=${tn < 1000} onClick=${resplit}>Split</button>
-          </div>
-          <div class="t-cap muted" style=${{ marginTop: '6px' }}>Keeps the same proportions. Or change single allocations below.</div>
-        </div>
-        <${SplitEditor} key=${k} cats=${cats} unit=${L.unitOf(b)} onChange=${setCats} st=${p.st} A=${A} spent=${L.status(p.st, b, Date.now()).byCat} />
+        ${editingTotal ? html`<div class="card" style=${{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <label class="t-label" for="new-total">New budget ${perUnit(s.unit)}</label>
+            <input id="new-total" class="field num" inputmode="numeric" placeholder=${N(total)} value=${draft}
+              onInput=${function (e) { var v = +digits(e.target.value) || 0; setDraft(v ? N(v) : ''); }} />
+            <div class="t-cap muted">Your allocations change in the same proportions.</div>
+            <div class="btn-row"><button class="btn btn-outline btn-sm" onClick=${function () { setEditingTotal(false); }}>Cancel</button>
+              <button class="btn btn-primary btn-sm" disabled=${tn < 1000} onClick=${function () { resplit(tn); setEditingTotal(false); setDraft(''); }}>Update</button></div>
+          </div>`
+          : html`<button class="link" style=${{ alignSelf: 'flex-start', padding: 0 }} onClick=${function () { setEditingTotal(true); }}>Change your budget total</button>`}
+        <${SplitEditor} key=${k} cats=${cats} total=${total} unit=${s.unit} onChange=${setCats} onEdit=${setFocus} st=${st} A=${A} spent=${s.byCat} />
       </div>
-      <div class="lf pad"><button class="btn btn-primary" disabled=${L.totalBudget(cats) < 1000} onClick=${function () {
-        A.commitB(b.id, function (x) { x.cats = cats; }); A.say('Budget updated'); A.close();
-      }}>Save budget</button></div>
+      <div class="lf pad">
+        <${BalanceBar} cats=${cats} total=${total} focus=${focus} onCats=${function (n) { setCats(n); setK(k + 1); }} onTotal=${setTotal} />
+        <div class="scope"><span class="t-cap muted">Apply to</span>
+          <${Seg} value=${scope} onChange=${setScope} options=${[{ v: 'week', label: 'This ' + u + ' only' }, { v: 'all', label: 'Every ' + u }]} /></div>
+        <button class="btn btn-primary" disabled=${over || total < 1000} onClick=${save}>${over ? 'Fix the difference first' : 'Save'}</button>
+      </div>
     </div>`;
   }
 
@@ -1572,7 +1633,7 @@
     var sKind = useState('week'), kind = sKind[0], setKind = sKind[1];
     var sTotal = useState(''), total = sTotal[0], setTotal = sTotal[1];
     var sCats = useState(null), cats = sCats[0], setCats = sCats[1];
-    var sSeed = useState(0), seededFrom = sSeed[0], setSeeded = sSeed[1];
+    var sSeed = useState(0), seededFrom = sSeed[0], setSeeded = sSeed[1], sFoc = useState(null), focusId = sFoc[0], setFocusId = sFoc[1];
     var sRem = useState({ on: st.reminder.on, time: st.reminder.time }), reminder = sRem[0], setReminder = sRem[1];
     var n = +total || 0, u = unitWord(kind);
     var steps = ['type', 'amount', 'split'].concat(first ? ['reminder'] : []);
@@ -1582,11 +1643,11 @@
     function next() { setStep(step + 1); }
     function toSplit() { if (!cats || seededFrom !== n) { setCats(L.autoSplit(n)); setSeeded(n); } next(); }
     function finish(rem) {
-      var b = L.newBudget({ name: 'My budget', kind: 'repeat', rhythm: kind, cats: cats }, now), r = rem && rem.time ? rem : reminder;
+      var b = L.newBudget({ name: 'My budget', kind: 'repeat', rhythm: kind, cats: cats, total: Math.max(n, L.totalBudget(cats)) }, now), r = rem && rem.time ? rem : reminder;
       A.commit(function (x) { x.budgets = [b]; x.mainBid = b.id; x.lastBid = b.id; x.reminder = r; x.reminderAsked = true; x.sample = false; x.notifCardOff = true; });
       A.sfx('chime'); A.say('Your budget is ready'); stat('budget-created-' + kind, true); A.home();
     }
-    var cta = html`<button class="btn btn-primary" disabled=${!cats || L.totalBudget(cats) < 1000} onClick=${finish}>Start budgeting</button>`;
+    var cta = html`<button class="btn btn-primary" disabled=${!cats || L.totalBudget(cats) < 1000 || L.totalBudget(cats) > n} onClick=${finish}>Start budgeting</button>`;
     var head = html`<div class="lh pad">
       <${Back} icon=${step === 0 ? 'x' : 'back'} label=${step === 0 ? 'Close' : 'Back'} onClick=${function () { if (step === 0) A.close(); else setStep(step - 1); }} />
       <div class="steps" aria-label=${'Step ' + (step + 1) + ' of ' + steps.length}>${steps.map(function (x, i) { return html`<i class=${i <= step ? 'on' : ''}></i>`; })}</div>
@@ -1618,8 +1679,10 @@
       foot = html`<button class="btn btn-primary" disabled=${n < 1000} onClick=${toSplit}>Continue</button>`;
     } else if (cur === 'split') {
       body = html`<div class="lb pad"><div><h1 class="h1">Split it into allocations</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>An allocation is what you can spend on one thing each ${u}. We’ve made a start. Change any amount.</p></div>
-        <${SplitEditor} cats=${cats} unit=${kind} onChange=${setCats} st=${st} A=${A} /></div>`;
-      foot = isLast ? cta : html`<button class="btn btn-primary" disabled=${L.totalBudget(cats) < 1000} onClick=${next}>Continue</button>`;
+        <${SplitEditor} key=${'s' + seededFrom} cats=${cats} total=${n} unit=${kind} onChange=${setCats} onEdit=${setFocusId} st=${st} A=${A} /></div>`;
+      var splitOver = cats && L.totalBudget(cats) > n;
+      foot = html`<${BalanceBar} cats=${cats || {}} total=${n} focus=${focusId} onCats=${setCats} onTotal=${function (v) { setTotal(String(v)); setSeeded(v); }} />
+        ${isLast ? cta : html`<button class="btn btn-primary" disabled=${splitOver || L.totalBudget(cats) < 1000} onClick=${next}>${splitOver ? 'Fix the difference first' : 'Continue'}</button>`}`;
     } else if (notifyState() === 'default' || notifyState() === 'install') {
       var ios = notifyState() === 'install';
       body = html`<div class="lb pad">
@@ -1726,7 +1789,12 @@
         body = html`<div class=${cx('d-xl num fit', over && 'neg')}>${N(Math.abs(pt.left))}</div>
           <div class="t-s muted">${over ? 'over in ' + cname : 'left in ' + cname}</div>
           <div class="saved-pot"><${Bar} ratio=${pt.ratio} color=${color} /><div class="t-cap muted num">${N(pt.spent)} of ${N(pt.budget)}${per}</div></div>`;
-        if (over) extra = html`<button class="btn btn-secondary" style=${{ marginTop: '18px' }} onClick=${function () { A.cover(b.id, pt.id); }}>Move money from another allocation</button>`;
+        if (over) extra = html`<div class="over-choices">
+          <div class="t-label">What do you want to do?</div>
+          <button class="oc" onClick=${function () { A.cover(b.id, pt.id); }}><${Icon} n="coins" size=${20} /><span class="grow"><b>Move money from another allocation</b><span class="t-cap muted">Your ${N(s.budget)} budget stays the same</span></span><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+          <button class="oc" onClick=${function () { var amt = -pt.left; A.commitB(b.id, function (x) { L.raisePeriod(x, s.start, amt); x.adj.d[pt.id] = (x.adj.d[pt.id] || 0) + amt; }); A.sfx('chime'); A.say('This ' + u + '’s budget is now ' + N(s.budget + amt)); close(); }}><${Icon} n="trend" size=${20} /><span class="grow"><b>Raise this ${u}’s budget by ${N(-pt.left)}</b><span class="t-cap muted">Only this ${u}. Next ${u} goes back to ${N(L.planTotal(b))}</span></span><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+          <button class="oc" onClick=${close}><${Icon} n="check" size=${20} /><span class="grow"><b>Leave it</b><span class="t-cap muted">It comes out of what’s left this ${u}</span></span><${Icon} n="right" size=${16} color="var(--faint)" /></button>
+        </div>`;
       }
       if (inPeriod) extra = html`${extra}<div class="card saved-total"><span class="t-s muted">${s.left < 0 ? 'Over budget' : 'Left' + per}</span>
         <span class=${cx('t-label num', s.left < 0 && 'neg')}>${N(Math.abs(s.left))}</span></div>`;
@@ -1843,7 +1911,7 @@
               onInput=${function (e) { var d = +digits(e.target.value) || 0; setDraft(d ? N(d) : ''); }} />
             <div class="btn-row"><button class="btn btn-secondary btn-sm" style=${{ background: 'var(--surface)' }} onClick=${function () { setEditing(false); }}>Cancel</button>
               <button class="btn btn-dark btn-sm" onClick=${saveBudget}>Save</button></div>
-          </div>` : html`<button class="row" onClick=${function () { setDraft(rb ? N(rb) : ''); setEditing(true); }}>
+          </div>` : html`<button class="row" onClick=${function () { A.open({ type: 'split' }); }}>
             <div class="grow"><div class="name">${potLabel}</div>${v.scaled ? html`<div class="meta">Shown above scaled to ${perUnit(v.unit)}</div>` : bud !== rb && current ? html`<div class="meta">${N(bud)} this ${u} after moves</div>` : null}</div>
             <div class="amt num">${rb ? N(rb) : 'Not set'}</div><${Icon} n="pencil" size=${18} color="var(--muted)" /></button>`}
           <label class="row" for="pot-name"><div class="grow name">Name</div>
@@ -2053,6 +2121,19 @@
       var t = setTimeout(function () { Push.sync(ref.current); }, 1500);
       return function () { clearTimeout(t); };
     }, [pushKey, ready]);
+    // Theme: Automatic follows the phone; Light or Dark override it. The status bar colour follows too.
+    useEffect(function () {
+      var t = st.theme || 'auto', root = document.documentElement;
+      if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+      function paint() {
+        var dark = t === 'dark' || (t === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', dark ? '#111413' : '#ffffff'); });
+      }
+      paint();
+      var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+      if (mq && mq.addEventListener) mq.addEventListener('change', paint);
+      return function () { if (mq && mq.removeEventListener) mq.removeEventListener('change', paint); };
+    }, [st.theme]);
     // Keyboard (desktop): N logs a purchase, Esc closes what's open.
     useEffect(function () {
       function k(e) {

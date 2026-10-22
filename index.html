@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Budge</title>
 <meta name="description" content="See what’s left as you spend. A weekly budget split into pots. Log what you buy in two taps. Your data stays on your phone.">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111413" media="(prefers-color-scheme: dark)">
+<script>try { var _s = JSON.parse(localStorage.getItem("budge-proto-v1") || "null"); if (_s && (_s.theme === "dark" || _s.theme === "light")) document.documentElement.setAttribute("data-theme", _s.theme); } catch (e) {}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
@@ -26,14 +28,14 @@
 <meta name="twitter:description" content="See what’s left as you spend. A weekly budget split into pots. Log what you buy in two taps. Your data stays on your phone.">
 <meta name="twitter:image" content="https://dvn019.github.io/budge/og.png">
 <link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=19e7d50e">
+<link rel="stylesheet" href="style.css?v=58cf4507">
 </head>
 <body>
 <div id="root"></div>
 <script>
 window.BUDGE_PWA = true;
-window.BUDGE_CHANGELOG = [{"version": "1.7", "date": "21 Oct 2026", "title": "Stay in the loop", "notes": ["Log a purchase straight from any allocation", "Turn on evening reminders when you set up", "Get a notification when Budge gets an update"]}, {"version": "1.6", "date": "21 Oct 2026", "title": "Update notes", "notes": ["See every update in Settings → What’s new", "A green dot tells you when there’s something new"]}, {"version": "1.5", "date": "21 Oct 2026", "title": "Where it went", "notes": ["Insights shows how your spending splits across allocations", "Look at any day, week or month", "Swipe left on an allocation to remove it"]}, {"version": "1.4", "date": "21 Oct 2026", "title": "Simpler logging", "notes": ["Logging a purchase is now three simple steps", "Clearer wording: allocations and “left over”", "Lighter, easier-to-read text that works offline"]}, {"version": "1.3", "date": "21 Oct 2026", "title": "Allocations", "notes": ["“Pots” are now called allocations", "A simpler first screen with one clear button"]}, {"version": "1.2", "date": "21 Oct 2026", "title": "New first screen", "notes": ["A redesigned first screen", "The budget amount step now scrolls, so Continue is always in reach"]}, {"version": "1.1", "date": "21 Oct 2026", "title": "Desktop layout", "notes": ["A proper desktop layout with a sidebar", "Press N to log a purchase on a computer", "Scan a QR code to open Budge on your phone"]}, {"version": "1.0", "date": "21 Oct 2026", "title": "First release", "notes": ["One budget, split into allocations, shown as a tank", "Installs to your home screen and works offline", "Daily reminders, badges and backups"]}];
-window.BUDGE_CONFIG = { tally: '1WArAM', push: 'https://budge-reminders.dvn-business0x.workers.dev', release: '1.7', released: '21 Oct 2026', version: '19e7d50e' };
+window.BUDGE_CHANGELOG = [{"version": "1.8", "date": "22 Oct 2026", "title": "Your budget stays put", "notes": ["Changing an allocation no longer changes your budget total", "Go over? Move money, raise this week’s budget, or leave it", "Dark mode, automatic or your choice"]}, {"version": "1.7", "date": "21 Oct 2026", "title": "Stay in the loop", "notes": ["Log a purchase straight from any allocation", "Turn on evening reminders when you set up", "Get a notification when Budge gets an update"]}, {"version": "1.6", "date": "21 Oct 2026", "title": "Update notes", "notes": ["See every update in Settings → What’s new", "A green dot tells you when there’s something new"]}, {"version": "1.5", "date": "21 Oct 2026", "title": "Where it went", "notes": ["Insights shows how your spending splits across allocations", "Look at any day, week or month", "Swipe left on an allocation to remove it"]}, {"version": "1.4", "date": "21 Oct 2026", "title": "Simpler logging", "notes": ["Logging a purchase is now three simple steps", "Clearer wording: allocations and “left over”", "Lighter, easier-to-read text that works offline"]}, {"version": "1.3", "date": "21 Oct 2026", "title": "Allocations", "notes": ["“Pots” are now called allocations", "A simpler first screen with one clear button"]}, {"version": "1.2", "date": "21 Oct 2026", "title": "New first screen", "notes": ["A redesigned first screen", "The budget amount step now scrolls, so Continue is always in reach"]}, {"version": "1.1", "date": "21 Oct 2026", "title": "Desktop layout", "notes": ["A proper desktop layout with a sidebar", "Press N to log a purchase on a computer", "Scan a QR code to open Budge on your phone"]}, {"version": "1.0", "date": "21 Oct 2026", "title": "First release", "notes": ["One budget, split into allocations, shown as a tank", "Installs to your home screen and works offline", "Daily reminders, badges and backups"]}];
+window.BUDGE_CONFIG = { tally: '1WArAM', push: 'https://budge-reminders.dvn-business0x.workers.dev', release: '1.8', released: '22 Oct 2026', version: '58cf4507' };
 window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__installEvt = e; window.dispatchEvent(new Event('budge-installable')); });
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
@@ -48,6 +50,6 @@ if ('serviceWorker' in navigator) {
 </script>
 <script src="vendor/preact-htm.js"></script>
 <script data-goatcounter="https://budge.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
-<script src="app.js?v=19e7d50e"></script>
+<script src="app.js?v=58cf4507"></script>
 </body>
 </html>
