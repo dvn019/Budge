@@ -1147,7 +1147,14 @@
       </div>
       <${InstallTip} st=${st} A=${A} />
       <${NotifyCard} st=${st} A=${A} />
-      ${ti.ready ? html`<div class="card track-ready">
+      ${b.budgetFrom ? html`<div class="card track-ready">
+          <span class="b-ic" style=${{ background: 'var(--surface)' }}><${Icon} n="calendar" size=${20} color="var(--emerald-deep)" /></span>
+          <div class="grow"><div class="t-label">Your ${N(L.planTotal(b))} budget starts ${L.shortDate(b.budgetFrom)}</div>
+            <div class="t-s muted">Until then, keep tracking. Your new ${u} starts fresh.</div>
+            <div class="btn-row" style=${{ marginTop: '10px' }}><button class="btn btn-outline btn-sm" onClick=${function () { A.open({ type: 'split', plan: true }); }}>Adjust it</button>
+              <button class="btn btn-text btn-sm" onClick=${function () { A.commitB(b.id, function (x) { x.budgetFrom = L.dkey(now); }); }}>Start it now</button></div></div>
+        </div>`
+      : ti.ready ? html`<div class="card track-ready">
           <span class="b-ic" style=${{ background: 'var(--emerald-soft)' }}><${Icon} n="sparkle" size=${20} color="var(--emerald-deep)" /></span>
           <div class="grow"><div class="t-label">Your budget suggestion is ready</div><div class="t-s muted">Based on what you logged. Take a look, it only takes a minute.</div>
             <button class="btn btn-primary btn-sm" style=${{ width: 'auto', marginTop: '10px', paddingInline: '18px' }} onClick=${function () { A.open({ type: 'suggest' }); }}>See my budget</button></div>
@@ -1169,11 +1176,13 @@
   function SuggestLayer(p) {
     var st = p.st, b = p.b, A = p.A, now = p.now, r = L.suggestBudget(st, b, now), u = r.period;
     var ids = L.allCats().filter(function (c) { return r.cats[c.id] > 0; }).map(function (c) { return c.id; });
+    // The budget starts fresh next week (or month); until then they keep tracking.
+    var from = L.addDays(L.periodEnd(b.rhythm, L.periodStart(b.rhythm, L.dkey(now))), 1);
     function accept(adjust) {
-      var today = L.dkey(now), full = {}; L.allCats().forEach(function (c) { full[c.id] = +r.cats[c.id] || 0; });
-      A.commitB(b.id, function (x) { x.mode = null; x.cats = full; x.total = r.total; x.adj = null; x.history = []; x.periodStart = L.periodStart(x.rhythm, today); x.suggestAt = null; });
+      var full = {}; L.allCats().forEach(function (c) { full[c.id] = +r.cats[c.id] || 0; });
+      A.commitB(b.id, function (x) { x.cats = full; x.total = r.total; x.adj = null; x.budgetFrom = from; x.suggestAt = null; });
       A.sfx('chime'); stat('suggest-accept' + (adjust ? '-adjust' : ''), true);
-      if (adjust) A.open({ type: 'split' }); else { A.close(); A.say('Your budget is ready'); }
+      if (adjust) A.open({ type: 'split', plan: true }); else { A.close(); A.say('Your budget starts ' + L.weekdayName(from) + ' ' + L.shortDate(from).replace(/^\w+ /, '')); }
     }
     function later() {
       A.commitB(b.id, function (x) { x.suggestAt = L.addDays(L.dkey(now), x.rhythm === 'month' ? 28 : 7); });
@@ -1185,7 +1194,7 @@
       <div class="lh pad"><${Back} icon="x" label="Close" onClick=${A.close} /></div>
       <div class="lb pad">
         <div><h1 class="h1">Here’s a budget that fits your spending</h1>
-          <p class="t-s muted" style=${{ margin: '8px 0 0' }}>${r.full ? 'You spent ' + N(r.spent) + ' in the last ' + u + '.' : 'You spent ' + N(r.spent) + ' in ' + r.days + ' day' + (r.days > 1 ? 's' : '') + ', about ' + N(r.scaled) + ' a ' + u + '.'} We rounded it up and trimmed treats a little.</p></div>
+          <p class="t-s muted" style=${{ margin: '8px 0 0' }}>${r.full ? 'You spent ' + N(r.spent) + ' in the last ' + u + '.' : 'You spent ' + N(r.spent) + ' in ' + r.days + ' day' + (r.days > 1 ? 's' : '') + ', about ' + N(r.scaled) + ' a ' + u + '.'} We rounded it up and trimmed treats a little. It starts fresh on ${L.shortDate(from)}.</p></div>
         <div class="card total-card"><span class="t-s muted">Suggested budget</span><span><span class="t-title num" style=${{ fontWeight: 600, fontSize: '22px' }}>${N(r.total)}</span><span class="t-s muted"> a ${u}</span></span></div>
         <div class="list">${ids.map(function (id) {
           return html`<div class="row" key=${id}><${CatIcon} id=${id} size=${40} /><div class="grow"><div class="name">${L.cat(id).name}</div></div><div class="amt num">${N(r.cats[id])}</div></div>`;
@@ -1644,8 +1653,8 @@
     return html`<div class="pad tabpad">
       <h1 class="h1">Settings</h1>
       ${b.mode === 'track' && html`<div><div class="group-title">Tracking</div><div class="group">
-        <div class="row"><div class="grow"><div class="name">You’re tracking your spending</div><div class="meta">Budget suggestion ${L.trackInfo(st, b, now).ready ? 'is ready' : 'due ' + L.shortDate(L.trackInfo(st, b, now).due)}</div></div></div>
-        ${L.trackInfo(st, b, now).canAsk && html`<button class="row" onClick=${function () { A.open({ type: 'suggest' }); }}><div class="grow name">Suggest a budget now</div><${Icon} n="right" size=${16} color="var(--faint)" /></button>`}
+        <div class="row"><div class="grow"><div class="name">You’re tracking your spending</div><div class="meta">${b.budgetFrom ? 'Your budget starts ' + L.shortDate(b.budgetFrom) : 'Budget suggestion ' + (L.trackInfo(st, b, now).ready ? 'is ready' : 'due ' + L.shortDate(L.trackInfo(st, b, now).due))}</div></div></div>
+        ${!b.budgetFrom && L.trackInfo(st, b, now).canAsk && html`<button class="row" onClick=${function () { A.open({ type: 'suggest' }); }}><div class="grow name">Suggest a budget now</div><${Icon} n="right" size=${16} color="var(--faint)" /></button>`}
       </div></div>`}
       ${b.mode !== 'track' && html`<div><div class="group-title">Budget</div><div class="group">
         <div class="row"><div class="grow name">Budget every</div>
@@ -1790,9 +1799,9 @@
   }
   function SplitLayer(p) {
     var b = p.b, A = p.A, st = p.st, s = L.status(st, b, Date.now()), u = unitWord(s.unit);
-    var cs = useState(function () { return clone(s.cats); }), cats = cs[0], setCats = cs[1];
-    var ts = useState(s.budget), total = ts[0], setTotal = ts[1];
-    var sc = useState('week'), scope = sc[0], setScope = sc[1];
+    var cs = useState(function () { return clone(p.plan ? b.cats : s.cats); }), cats = cs[0], setCats = cs[1];
+    var ts = useState(p.plan ? L.planTotal(b) : s.budget), total = ts[0], setTotal = ts[1];
+    var sc = useState(p.plan ? 'all' : 'week'), scope = sc[0], setScope = sc[1];
     var ed = useState(false), editingTotal = ed[0], setEditingTotal = ed[1];
     var dt = useState(''), draft = dt[0], setDraft = dt[1];
     var kk = useState(0), k = kk[0], setK = kk[1], fe = useState(null), focus = fe[0], setFocus = fe[1];
@@ -1823,8 +1832,8 @@
       </div>
       <div class="lf pad">
         <${BalanceBar} cats=${cats} total=${total} focus=${focus} onCats=${function (n) { setCats(n); setK(k + 1); }} onTotal=${setTotal} />
-        <div class="scope"><span class="t-cap muted">Apply to</span>
-          <${Seg} value=${scope} onChange=${setScope} options=${[{ v: 'week', label: 'This ' + u + ' only' }, { v: 'all', label: 'Every ' + u }]} /></div>
+        ${!p.plan && html`<div class="scope"><span class="t-cap muted">Apply to</span>
+          <${Seg} value=${scope} onChange=${setScope} options=${[{ v: 'week', label: 'This ' + u + ' only' }, { v: 'all', label: 'Every ' + u }]} /></div>`}
         <button class="btn btn-primary" disabled=${over || total < 1000 || L.totalBudget(cats) <= 0} onClick=${save}>${fixLabel(cats, total, 'Save')}</button>
       </div>
     </div>`;
@@ -2407,6 +2416,12 @@
       if (mq && mq.addEventListener) mq.addEventListener('change', paint);
       return function () { if (mq && mq.removeEventListener) mq.removeEventListener('change', paint); };
     }, [st.theme]);
+    // A suggested budget waiting for its first week: switch it on when that day arrives.
+    useEffect(function () {
+      if (!budget || budget.mode !== 'track' || !budget.budgetFrom || L.dkey(now) < budget.budgetFrom) return;
+      commit(function (x) { var bb = L.findBudget(x, budget.id); bb.mode = null; bb.history = []; bb.adj = null; bb.periodStart = L.periodStart(bb.rhythm, L.dkey(now)); });
+      setTimeout(function () { SFX.play('chime'); A.say('Your budget starts today'); }, 600);
+    });
     // Keyboard (desktop): N logs a purchase, Esc closes what's open.
     useEffect(function () {
       function k(e) {
@@ -2515,7 +2530,7 @@
         else if (lb && layer.type === 'cat') lay = html`<${CategoryDetail} key=${layer.id} st=${st} b=${lb} now=${now} A=${A} id=${layer.id} unit=${layer.unit} offset=${layer.offset} />`;
         else if (lb && layer.type === 'list') lay = html`<${PurchaseList} st=${st} b=${lb} now=${now} A=${A} unit=${layer.unit} offset=${layer.offset} />`;
         else if (lb && layer.type === 'cover') lay = html`<${CoverLayer} key=${layer.id} st=${st} b=${lb} now=${now} A=${A} id=${layer.id} />`;
-        else if (lb && layer.type === 'split') lay = html`<${SplitLayer} st=${st} b=${lb} A=${A} />`;
+        else if (lb && layer.type === 'split') lay = html`<${SplitLayer} st=${st} b=${lb} A=${A} plan=${!!layer.plan || lb.mode === 'track'} />`;
       }
       var side = desk && budget ? html`<${SideNav} tab=${nav.tab} A=${A} st=${st} now=${now} live=${live} unseen=${unseen} newUnseen=${newUnseen} />` : null;
       body = html`${side}<main class=${cx('screen', !budget && 'screen-onboard', 'tab-' + (budget ? nav.tab : 'onboard'))} key=${budget ? nav.tab : 'onboard'}>${screen}</main>
