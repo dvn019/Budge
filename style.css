@@ -1035,3 +1035,14 @@ button.row:active, .ev-card:active, .ev-prompt-main:active { transform: scale(.9
 .coming-road { width: 100%; display: flex; gap: 10px; align-items: flex-start; background: var(--emerald-soft); border-radius: 16px; padding: 12px 14px; }
 .coming-road svg { flex: none; margin-top: 1px; }
 .coming-road b { font-weight: 600; }
+
+/* ---------- 1.18: installed app feels fixed ---------- */
+/* Only the inner lists scroll. The page itself never bounces, so the whole screen can't slide on iPhone. */
+@media (max-width: 520px) {
+  html, body { position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none; }
+  #root { height: 100%; }
+  .stage { height: 100%; }
+  /* Solid strip behind the status bar: nothing scrolls or slides under it */
+  .app::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: var(--sat); background: var(--surface); z-index: 35; pointer-events: none; }
+}
+.screen, .lb, .saved { overscroll-behavior-y: contain; }
