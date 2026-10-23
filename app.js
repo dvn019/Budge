@@ -81,9 +81,10 @@
     USD: { code: 'USD', sym: '$', name: 'US dollar', dp: 2, k: 1 / 500 },
     GBP: { code: 'GBP', sym: '£', name: 'British pound', dp: 2, k: 1 / 500 },
     EUR: { code: 'EUR', sym: '€', name: 'Euro', dp: 2, k: 1 / 500 },
-    CAD: { code: 'CAD', sym: 'C$', name: 'Canadian dollar', dp: 2, k: 1 / 500 }
+    CAD: { code: 'CAD', sym: 'C$', name: 'Canadian dollar', dp: 2, k: 1 / 500 },
+    CNY: { code: 'CNY', sym: '¥', name: 'Chinese yuan', plural: 'Chinese yuan', dp: 2, k: 1 / 200 }
   };
-  var CUR_ORDER = ['NGN', 'USD', 'GBP', 'EUR', 'CAD'];
+  var CUR_ORDER = ['NGN', 'USD', 'GBP', 'EUR', 'CAD', 'CNY'];
   var CUR = CURRENCIES.NGN;
   function setCurrency(code) { CUR = CURRENCIES[code] || CURRENCIES.NGN; }
   function cur() { return CUR; }
@@ -1177,7 +1178,7 @@
     }
     function convert() {
       A.commit(function (x) { L.convertState(x, q.f, val); }); L.setCurrency(val);
-      stat('currency-switch-' + val, true); A.say('Switched to ' + L.CURRENCIES[val].name + (/s$/.test(L.CURRENCIES[val].name) ? '' : 's')); A.back();
+      stat('currency-switch-' + val, true); A.say('Switched to ' + (L.CURRENCIES[val].plural || L.CURRENCIES[val].name + (/s$/.test(L.CURRENCIES[val].name) ? '' : 's'))); A.back();
     }
     var title = first ? 'Which currency do you use?' : 'Change currency';
     var sub = first ? 'Budge shows every amount in this currency. You can change it later in Profile.' : 'Every amount in Budge converts at today’s exchange rate.';
