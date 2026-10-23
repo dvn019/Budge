@@ -845,7 +845,7 @@ button.row:active, .ev-card:active, .ev-prompt-main:active { transform: scale(.9
 }
 
 /* Dock: a compact nav pill with a floating + beside it */
-.dock { position: absolute; left: 0; right: 0; bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 10; display: flex; justify-content: center; align-items: center; gap: 10px; pointer-events: none; }
+.dock { position: absolute; left: 0; right: 0; bottom: max(16px, var(--sab)); z-index: 10; display: flex; justify-content: center; align-items: center; gap: 10px; pointer-events: none; }
 .dock > * { pointer-events: auto; }
 .dock .tabbar { position: static; height: 60px; padding: 5px; gap: 4px; justify-content: center; }
 .dock .tabbar .tab { flex: none; width: 58px; height: 48px; }
@@ -905,3 +905,53 @@ button.row:active, .ev-card:active, .ev-prompt-main:active { transform: scale(.9
 .thanks-list { list-style: none; margin: 4px 0 0; padding: 0; }
 .thanks-list li { font-size: 36px; line-height: 1.25; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--ink); animation: riseIn .45s cubic-bezier(.2, .8, .2, 1) both; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { .thanks-list li, .cur-preview { animation: none; } }
+
+/* ---------- 1.15: iPhone safe areas, pinned footers ---------- */
+/* Installed on iPhone, the page runs under the status bar and the home bar: leave room for both. */
+:root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); }
+@media (max-width: 520px) {
+  .app { padding-top: var(--sat); }
+  .layer { padding-top: var(--sat); }
+  .notif { top: calc(10px + var(--sat)); }
+}
+/* A layer is header + scrolling body + pinned footer: the body may shrink, so the footer never leaves the screen. */
+.lb, .screen, .lb-amount { min-height: 0; }
+.lb { overscroll-behavior: contain; }
+.lf { flex: none; padding-bottom: max(20px, calc(var(--sab) + 8px)); background: var(--surface); position: relative; z-index: 2; }
+.lf::before { content: ''; position: absolute; left: 0; right: 0; top: -16px; height: 16px; background: linear-gradient(to top, var(--surface), transparent); pointer-events: none; }
+.tabpad { padding-bottom: calc(112px + var(--sab)); }
+.onboard { padding-bottom: max(24px, calc(var(--sab) + 8px)); }
+.toast { bottom: calc(96px + var(--sab)); }
+.desk .lf { padding-bottom: 20px; }
+
+/* Reminders step illustration: a mini lock screen */
+.rm-art { position: relative; flex: none; height: 230px; border-radius: 28px; overflow: hidden; padding: 22px 16px 16px; display: flex; flex-direction: column; align-items: center;
+  background: linear-gradient(160deg, #0B8A4F 0%, #0A5C37 55%, #0A2E1E 100%); color: #fff; transition: filter .3s, opacity .3s; }
+.rm-art.off { filter: grayscale(1); opacity: .55; }
+.rm-glow { position: absolute; width: 260px; height: 260px; border-radius: 50%; top: -120px; right: -80px; background: radial-gradient(closest-side, rgba(74, 222, 128, .45), transparent); }
+.rm-day { position: relative; font-size: var(--fs-s); font-weight: 500; opacity: .85; }
+.rm-time { position: relative; font-size: 54px; font-weight: 600; letter-spacing: -0.04em; line-height: 1.05; }
+.rm-time span { font-size: var(--fs-m); font-weight: 600; letter-spacing: 0; margin-left: 4px; opacity: .8; }
+.rm-note { position: relative; margin-top: auto; width: 100%; display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 12px; border-radius: 20px;
+  background: rgba(255, 255, 255, .92); color: #0B0F0D; box-shadow: 0 12px 30px rgba(0, 0, 0, .25); animation: rmIn .7s cubic-bezier(.2, 1.3, .4, 1) .3s both; }
+.rm-top { display: flex; justify-content: space-between; font-size: var(--fs-xs); color: #5B635F; }
+.rm-note b { display: block; font-size: var(--fs-s); font-weight: 600; margin-top: 1px; }
+.rm-sub { display: block; font-size: var(--fs-xs); color: #3D4541; margin-top: 1px; }
+.rm-bell { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 12px; background: rgba(255, 255, 255, .16); display: flex; align-items: center; justify-content: center; animation: rmRing 2.6s ease-in-out 1s infinite; transform-origin: 50% 20%; }
+@keyframes rmIn { from { transform: translateY(-30px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rmRing { 0%, 70%, 100% { transform: rotate(0); } 74% { transform: rotate(14deg); } 78% { transform: rotate(-12deg); } 82% { transform: rotate(8deg); } 86% { transform: rotate(-5deg); } 90% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .rm-note, .rm-bell { animation: none; } }
+/* Short screens (iPhone SE, or any phone with the browser bars showing): tighten the keypad pages so the keys and the button both fit */
+/* Keys size themselves to the height that's really left (status bar and home bar taken out), so keypad and button both fit */
+@media (max-width: 520px) {
+  .amount-wrap { min-height: 88px; }
+  .key { max-width: clamp(46px, calc((100vh - var(--sat) - var(--sab) - 430px) / 4.4), 76px); }
+  @supports (height: 100dvh) { .key { max-width: clamp(46px, calc((100dvh - var(--sat) - var(--sab) - 430px) / 4.4), 76px); } }
+}
+@media (max-height: 760px) and (max-width: 520px) {
+  .lb-amount, .layer .lb:has(.keypad) { gap: 10px; padding-bottom: 8px; }
+  .amount-wrap { gap: 8px; }
+  .keypad { gap: 8px 20px; padding-top: 2px; }
+  .key { font-size: var(--fs-l); }
+  .lb-amount .h1 { font-size: var(--fs-l); }
+}

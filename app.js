@@ -2208,6 +2208,22 @@
   }
   function isStandalone() { try { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } }
   function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  // The reminders step: a little lock screen at your chosen time, with Budge's nudge arriving.
+  function ReminderArt(p) {
+    var t = (p.time || '20:00').split(':'), h = +t[0], m = t[1] || '00', ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12 || 12;
+    var d = new Date(), day = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    return html`<div class=${cx('rm-art', p.off && 'off')} aria-hidden="true">
+      <div class="rm-glow"></div>
+      <div class="rm-day">${day}</div>
+      <div class="rm-time num">${h12}:${m}<span>${ap}</span></div>
+      <div class="rm-note">
+        <${Logo} size=${34} />
+        <div class="grow"><div class="rm-top"><span>Budge</span><span>now</span></div>
+          <b>Anything to log today?</b><span class="rm-sub">Tap to add it and keep your streak going.</span></div>
+      </div>
+      <div class="rm-bell"><${Icon} n="bell" size=${18} color="#fff" /></div>
+    </div>`;
+  }
   function NotifyCard(p) {
     var st = p.st, A = p.A, ns = notifyState();
     if (st.notifCardOff || ns !== 'default' || (!isStandalone() && window.__installEvt)) return null;
@@ -2515,7 +2531,7 @@
     } else if (notifyState() === 'default' || notifyState() === 'install') {
       var ios = notifyState() === 'install';
       body = html`<div class="lb pad">
-        <span class="b-ic" style=${{ width: '56px', height: '56px', background: 'var(--emerald-soft)' }}><${Icon} n="bell" size=${26} color="var(--emerald-deep)" /></span>
+        <${ReminderArt} time=${reminder.time} />
         <div><h1 class="h1">Get a reminder each evening?</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>A quick nudge on days you haven’t logged anything. It’s how people stick with a budget.</p></div>
         ${ios ? html`<div class="card ios-steps">
             <div class="t-label">First, add Budge to your home screen</div>
@@ -2529,7 +2545,7 @@
           <button class="btn btn-text" onClick=${function () { finish({ on: false, time: reminder.time }); }}>Not now</button>`;
     } else {
       body = html`<div class="lb pad">
-        <span class="b-ic" style=${{ width: '56px', height: '56px', background: 'var(--emerald-soft)' }}><${Icon} n="bell" size=${26} color="var(--emerald-deep)" /></span>
+        <${ReminderArt} time=${reminder.time} off=${!reminder.on} />
         <div><h1 class="h1">Want a daily reminder?</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>We’ll only nudge you on days you haven’t logged anything.</p></div>
         <div class="group">
           <div class="row"><div class="grow name">Daily reminder</div><${Toggle} label="Daily reminder" on=${reminder.on} onChange=${function (v) { setReminder({ on: v, time: reminder.time }); }} /></div>
