@@ -955,3 +955,76 @@ button.row:active, .ev-card:active, .ev-prompt-main:active { transform: scale(.9
   .key { font-size: var(--fs-l); }
   .lb-amount .h1 { font-size: var(--fs-l); }
 }
+
+/* ---------- 1.16: saved screen scrolls above a pinned footer; clearer over choices ---------- */
+.saved { min-height: 0; overflow-y: auto; overflow-x: hidden; justify-content: flex-start; padding-top: 8px; padding-bottom: 20px; scrollbar-width: none; }
+.saved::-webkit-scrollbar { display: none; }
+.saved::before, .saved::after { content: ''; flex: 1 1 0; min-height: 0; }   /* centres short content, collapses when it's tall */
+.over-week { font-size: var(--fs-s); font-weight: 600; margin-top: 10px; }
+.oc-wrap { border-radius: 16px; background: var(--card); transition: box-shadow .15s; }
+.oc-wrap.on { box-shadow: 0 0 0 2px var(--emerald); }
+.oc-wrap .oc { width: 100%; background: transparent; align-items: flex-start; padding: 14px; }
+.oc .radio { margin-top: 2px; }
+.oc.on .radio { box-shadow: inset 0 0 0 7px var(--emerald); }
+.oc-preview { margin: 0 14px 14px 48px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; animation: riseIn .25s cubic-bezier(.2, .8, .2, 1) both; }
+.oc-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 8px; font-size: var(--fs-s); color: var(--ink-2); }
+.oc-row span:nth-child(n+2) { text-align: right; }
+.oc-row span:last-child { color: var(--ink); font-weight: 600; }
+.oc-ph { font-size: var(--fs-xs); color: var(--muted); }
+.oc-ph span:last-child { color: var(--muted); font-weight: 500; }
+.saved > * { flex-shrink: 0; }
+
+/* Desktop QR, inline */
+.qr-inline { display: flex; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); max-width: 340px; }
+.qr-inline .qr { width: 64px; height: 64px; flex: none; border-radius: 6px; }
+.side-foot .qr-inline { padding: 8px; gap: 10px; }
+.side-foot .qr-inline .qr { width: 52px; height: 52px; }
+.side-foot .qr-inline .t-cap { display: none; }
+.onboard-qr, .onboard-cap { display: none; }
+
+/* Desktop welcome: split screen. Left, a full-height green panel with the tank; right, the words and buttons. */
+.desk .screen-onboard { background: var(--surface); overflow: hidden; }
+.desk .onboard { max-width: none; height: 100%; min-height: 0; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto auto auto 1fr; grid-template-areas: "hero ." "hero brand" "hero copy" "hero actions" "hero qr" "hero ."; column-gap: 0; row-gap: 28px; align-items: start; }
+.desk .onboard-hero { grid-area: hero; align-self: stretch; position: relative; display: flex; align-items: center; justify-content: center; padding: 56px;
+  background: radial-gradient(90% 70% at 30% 20%, #12B76A 0%, #0B8A4F 38%, #0A2E1E 100%); overflow: hidden; }
+.desk .onboard-hero > * { width: min(460px, 100%); box-shadow: 0 40px 90px rgba(0, 0, 0, .35); }
+.desk .onboard-cap { display: block; grid-area: hero; align-self: end; justify-self: center; margin-bottom: 32px; color: rgba(255, 255, 255, .7); font-size: var(--fs-s); z-index: 1; }
+.desk .onboard-brand, .desk .onboard-copy, .desk .onboard-actions, .desk .onboard-qr { margin-left: clamp(48px, 7vw, 120px); margin-right: 48px; max-width: 460px; }
+.desk .onboard-brand { grid-area: brand; }
+.desk .onboard-copy { grid-area: copy; }
+.desk .onboard-actions { grid-area: actions; max-width: 380px; }
+.desk .onboard-qr { display: block; grid-area: qr; padding-top: 8px; }
+.desk .onboard-title { font-size: var(--fs-d3); line-height: 60px; }
+
+/* Desktop dashboard, tidied: capped width, allocations and Today stacked on the right so the columns end together */
+.desk .tab-home .tabpad { max-width: 1080px; }
+.desk .home-grid { grid-template-areas: "a p" "a t" "a ." ; grid-template-rows: auto auto 1fr; align-items: start; }
+.desk .home-today { grid-area: t; }
+.desk .tab-home .tank { height: 280px !important; }
+
+/* ---------- Sound control (Home header, sidebar) and the one-time heads-up ---------- */
+.pill-streak { background: var(--panel); color: var(--ink); }
+.top-right { display: flex; align-items: center; gap: 8px; }
+.sound-btn { width: 30px; height: 30px; flex: none; border-radius: 999px; background: var(--panel); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; transition: transform .15s, background-color .15s; }
+.sound-btn:active { transform: scale(.9); }
+.sound-btn.muted { color: var(--muted); }
+.desk .pill-streak, .desk .sound-btn { background: var(--surface); }
+.sound-tip { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--panel-line); }
+.sound-tip-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--emerald-soft); display: inline-flex; align-items: center; justify-content: center; }
+.sound-tip .btn-row { display: flex; gap: 8px; }
+.sound-tip .btn-sm { width: auto; padding-inline: 16px; }
+.side-sound { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 12px; background: var(--panel); font-size: var(--fs-s); font-weight: 500; color: var(--ink); cursor: pointer; }
+/* Desktop: History pop-up and its entry on the dashboard */
+.desk .layer.layer-wide { width: 640px; }
+.hist-lb { padding-bottom: 0; }
+.hist-lb > .tabpad { padding-bottom: 32px; }
+.hist-entry { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; text-align: left; border: 1px solid var(--panel-line); }
+.hist-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--panel); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+.desk .hist-entry { background: var(--surface); }
+/* Allocation page: purchases first, settings behind Edit */
+.cd-edit { font-weight: 600; }
+.cd-ph { display: flex; align-items: center; gap: 4px; margin: 0 -8px 4px; }
+.cd-ph .grow { text-align: center; }
+.cd-settings { animation: riseIn .25s cubic-bezier(.2, .8, .2, 1) both; }
+.pot-meta { font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
