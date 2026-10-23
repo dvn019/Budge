@@ -1028,3 +1028,10 @@ button.row:active, .ev-card:active, .ev-prompt-main:active { transform: scale(.9
 .cd-ph .grow { text-align: center; }
 .cd-settings { animation: riseIn .25s cubic-bezier(.2, .8, .2, 1) both; }
 .pot-meta { font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* What's coming */
+.coming-card { gap: 10px; max-height: calc(100% - 24px); overflow-y: auto; }
+.coming-tag { color: var(--emerald-deep); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+.coming-box { width: 100%; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.coming-road { width: 100%; display: flex; gap: 10px; align-items: flex-start; background: var(--emerald-soft); border-radius: 16px; padding: 12px 14px; }
+.coming-road svg { flex: none; margin-top: 1px; }
+.coming-road b { font-weight: 600; }

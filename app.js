@@ -1329,6 +1329,8 @@
   function useDeskNow() { try { return window.matchMedia('(min-width: 1024px)').matches; } catch (e) { return false; } }
   function onComputer() { try { return window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches; } catch (e) { return false; } }
   // The sync tip shows once per device (kept outside the budget data, so restoring a backup doesn't hide it).
+  function comingSeen() { try { return localStorage.getItem('budge-coming-1') === '1'; } catch (e) { return true; } }
+  function markComing() { try { localStorage.setItem('budge-coming-1', '1'); } catch (e) { } }
   function syncTipSeen() { try { return localStorage.getItem('budge-sync-tip') === '1'; } catch (e) { return true; } }
   function markSyncTip() { try { localStorage.setItem('budge-sync-tip', '1'); } catch (e) { } }
   function useDesk() {
@@ -2239,6 +2241,38 @@
       </div>
     </div>`;
   }
+  function ComingLayer(p) {
+    var A = p.A;
+    return html`<div class="layer">
+      <div class="lh pad"><${Back} onClick=${A.back} /><div class="lh-title">Coming soon</div></div>
+      <div class="lb pad">
+        <div><h1 class="h1">Accounts are on the way</h1><p class="t-s muted" style=${{ margin: '8px 0 0' }}>Soon you’ll be able to sign up, and Budge will keep your phone and computer in sync for you.</p></div>
+        <div class="coming-box"><div class="t-label">Until then, moving your data is manual</div>
+          <ol class="sg-steps"><li><span class="sg-n num">1</span><span>On the device with your data: Profile → Save a backup.</span></li>
+            <li><span class="sg-n num">2</span><span>Send the file to your other device by AirDrop, WhatsApp or email.</span></li>
+            <li><span class="sg-n num">3</span><span>On the other device: Profile → Restore a backup.</span></li></ol>
+          <button class="link" style=${{ padding: 0, alignSelf: 'flex-start' }} onClick=${function () { A.open({ type: 'syncGuide' }); }}>Step by step for your device</button></div>
+        <div class="coming-road"><${Icon} n="trend" size=${18} color="var(--emerald-deep)" /><div class="t-s"><b>Also on the roadmap:</b> leaderboards with friends, ranked on streaks, never on how much you spend.</div></div>
+      </div>
+    </div>`;
+  }
+  function ComingCard(p) {
+    return html`<div class="modal-wrap wn-modal"><div class="scrim" onClick=${p.close}></div>
+      <div class="wn-card coming-card" role="dialog" aria-label="What’s coming">
+        <div class="t-cap coming-tag">What’s coming</div>
+        <h2 class="h2" style=${{ margin: 0 }}>Accounts are on the way</h2>
+        <div class="t-s muted">Soon you’ll be able to sign up, and Budge will keep your phone and computer in sync for you.</div>
+        <div class="coming-box">
+          <div class="t-label">Until then, moving your data is manual</div>
+          <ol class="sg-steps"><li><span class="sg-n num">1</span><span>On the device with your data: Profile → Save a backup.</span></li>
+            <li><span class="sg-n num">2</span><span>Send the file to your other device by AirDrop, WhatsApp or email.</span></li>
+            <li><span class="sg-n num">3</span><span>On the other device: Profile → Restore a backup.</span></li></ol>
+        </div>
+        <div class="coming-road"><${Icon} n="trend" size=${18} color="var(--emerald-deep)" /><div class="t-s"><b>Also on the roadmap:</b> leaderboards with friends, ranked on streaks, never on how much you spend.</div></div>
+        <button class="btn btn-primary" onClick=${p.close}>Got it</button>
+        <button class="btn btn-text" onClick=${p.guide}>See the full steps</button>
+      </div></div>`;
+  }
   function SyncTip(p) {
     return html`<div class="modal-wrap wn-modal"><div class="scrim" onClick=${p.close}></div>
       <div class="wn-card sync-card" role="dialog" aria-label="Using Budge on more than one device?">
@@ -2350,6 +2384,7 @@
           <${Seg} value=${st.theme || 'auto'} onChange=${function (v) { A.commit(function (x) { x.theme = v; }); }} options=${[{ v: 'auto', label: 'Auto' }, { v: 'light', label: 'Light' }, { v: 'dark', label: 'Dark' }]} /></div>
       </div></div>
       ${LOG.length > 0 && html`<div><div class="group-title">About</div><div class="group">
+        <button class="row" onClick=${function () { A.open({ type: 'coming' }); }}><div class="grow"><div class="name">Coming soon</div><div class="meta">Accounts, sync between devices, leaderboards</div></div><${Icon} n="right" size=${16} color="var(--faint)" /></button>
         <button class="row" onClick=${function () { A.open({ type: 'whatsnew' }); }}><div class="grow"><div class="name">What’s new</div><div class="meta">Version ${LATEST} · ${LOG[0].title}</div></div>
           ${p.unseen && html`<span class="dot dot-inline" aria-label="New"></span>`}<${Icon} n="right" size=${16} color="var(--faint)" /></button>
       </div></div>`}
@@ -3094,13 +3129,10 @@
       commit(function (x) { x.earned = Object.assign({}, x.earned || {}); fresh.forEach(function (f) { x.earned[f.id] = L.dkey(now); }); });
       if (!quiet) { setTimeout(function () { SFX.play('chime'); setBdg({ id: fresh[0].id, fresh: true }); }, 700); fresh.forEach(function (f) { stat('badge-' + f.id, true); }); }
     });
-    // Using Budge on more than one device? Once on a computer, or once on a phone after a week of use.
+    // "What's coming": accounts and sync are on the way; until then, moving data is manual. Shown once per device.
     useEffect(function () {
-      if (!ready || !budget || st.sample || syncTip || syncTipSeen() || layer || bdg || justUpdated) return;
-      var first = st.entries.reduce(function (m, e) { return Math.min(m, e.ts || Infinity); }, Infinity);
-      var due = onComputer() || (first !== Infinity && now - first >= 7 * DAY);
-      if (!due) return;
-      var t = setTimeout(function () { markSyncTip(); setSyncTip(true); stat('sync-tip-shown', true); }, 1500);
+      if (!ready || !budget || st.sample || syncTip || comingSeen() || layer || bdg || justUpdated) return;
+      var t = setTimeout(function () { markComing(); setSyncTip(true); stat('coming-shown', true); }, 1500);
       return function () { clearTimeout(t); };
     });
     // The number on the app icon: 1 when nothing is logged today (installed app only).
@@ -3260,6 +3292,7 @@
         else if (layer.type === 'recap' && budget) lay = html`<${RecapLayer} st=${st} b=${budget} A=${A} />`;
         else if (layer.type === 'syncGuide') lay = html`<${SyncGuide} A=${A} />`;
         else if (layer.type === 'histModal' && budget) lay = html`<${HistoryLayer} key=${layer.k} st=${st} b=${budget} now=${now} A=${A} />`;
+        else if (layer.type === 'coming') lay = html`<${ComingLayer} A=${A} />`;
         else if (layer.type === 'thanks') lay = html`<${Thanks} A=${A} />`;
         else if (layer.type === 'currency') lay = html`<${CurrencyLayer} key=${layer.k || 'c'} st=${st} A=${A} mode=${layer.mode} then=${layer.then} />`;
         else if (layer.type === 'whatsnew') lay = html`<${WhatsNew} A=${A} onSeen=${function () { setNewUnseen(false); }} />`;
@@ -3293,7 +3326,7 @@
             <button class="btn btn-primary" onClick=${function () { markSeen(); setNewUnseen(false); setJustUpdated(null); }}>Got it</button>
             <button class="btn btn-text" onClick=${function () { markSeen(); setNewUnseen(false); setJustUpdated(null); A.open({ type: 'whatsnew' }); }}>See all updates</button>
           </div></div>`}
-        ${syncTip && html`<${SyncTip} close=${function () { setSyncTip(false); }} guide=${function () { setSyncTip(false); A.open({ type: 'syncGuide' }); }} />`}
+        ${syncTip && html`<${ComingCard} close=${function () { setSyncTip(false); }} guide=${function () { setSyncTip(false); A.open({ type: 'syncGuide' }); }} />`}
         ${bdg && html`<${BadgeCard} st=${st} now=${now} id=${bdg.id} fresh=${bdg.fresh} close=${function () { setBdg(null); }} />`}
         ${toast && html`<div class=${cx('toast', toast.undo && 'toast-undo')} key=${toast.k} role="status"><span>${toast.m}</span>
           ${toast.undo && html`<button class="toast-act" onClick=${function () { toast.undo(); setToast(null); }}>Undo</button>`}</div>`}
